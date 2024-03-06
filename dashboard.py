@@ -22,18 +22,21 @@ class Dashboard:
                     if not chunk:
                         break  # If no more data, stop the loop
                     self.client_socket.sendall(chunk)  # Send the chunk immediately
-
-                print("File sent successfully.")
+                # print("File sent successfully.")
         else:
             print("No file selected.")
 
     def receive_photo(self, server_socket):
-         with open('received.jpg', 'wb') as file:
+        with open('hello.jpg', 'wb') as file:
             while True:
                 data = server_socket.recv(1024)  # Receive data in chunks
-                if not data:
-                    break  # No more data to receive
+                if data.endswith(b"END_OF_FILE"):
+                # Remove the END_OF_FILE bytes before saving
+                    file.write(data[:-len(b"END_OF_FILE")])
+                    print("Photo received successfully.")
+                    break
                 file.write(data)  # Write the received data to a file
+        
 
     def select_user(self):
         username_list = list(dummy_users.keys())  # Extract the usernames from the dummy_users dictionary

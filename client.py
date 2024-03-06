@@ -60,12 +60,6 @@ def connect_to_server(host, port, username):
     server_socket.sendall(username.encode())  # Send the username right after connecting
     return server_socket
 
-# def send_message(server_socket, recipient, message):
-#     server_socket.sendall(f"{recipient}:{message}".encode())
-#     response = server_socket.recv(1024).decode()
-#     print(f"Server response: {response}")   
-    
-
 def main():
     # parse arguments
     if len(sys.argv) != 3:
@@ -73,37 +67,42 @@ def main():
         quit(1)
     host = sys.argv[1]
     port = sys.argv[2]
-    #user = sys.argv[3]
 
-    # # open a socket
-    # clientfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    while True:
+        username = input("Enter your username: ")
+        server_socket = connect_to_server(host, int(port), username)
+        
+        response = server_socket.recv(1024).decode()
+        print(response)
 
-    # # connect to server
-    # clientfd.connect((host, int(port)))
-    # clientfd.sendall(user.encode()) 
-    
+        if response != "Wrong username":
+            break  # Exit the loop if the username is accepted
 
-    # d = Dashboard(host, int(port), user)
-    # message loop
-    username = input("Enter your username: ")
-    server_socket = connect_to_server(host, int(port), username)
+        server_socket.close()  # Close the old socket before retrying
+
     d = Dashboard(server_socket)
     
     while(True):
         try:
             print("Would you like to send a photo or receive a photo?")
             recipient = input("Enter recipient username or receive: ")
+
             if recipient == "receive":
                 d.receive_photo(server_socket)
-            else:
+                continue
+            
+            else: 
                 server_socket.sendall(recipient.encode())
                 response = server_socket.recv(1024).decode()
+            
                 if response == "This user is available":
+                    print(response)
                     d.select_photo()
-            
-            # message = input("Enter your message: ")
-            
-            # send_message(server_socket, recipient, message)
+                else:
+                    print(response)
+                    
+        except Exception as e:
+            print(f"An error occurred: {e}")
         finally:
             server_socket.close()
             
