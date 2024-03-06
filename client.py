@@ -4,7 +4,7 @@ from os import _exit as quit
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Hash import HMAC, SHA256
-import easygui
+# import easygui
 from dashboard import Dashboard
 
 # delimiter = b'<<DELIMITER>>'
@@ -54,32 +54,69 @@ from dashboard import Dashboard
 
 #     return mac, enc_msg, encrypted_aes_key, iv
 
-def main():
+def connect_to_server(host, port, username):
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.connect((host, port))
+    server_socket.sendall(username.encode())  # Send the username right after connecting
+    return server_socket
 
+# def send_message(server_socket, recipient, message):
+#     server_socket.sendall(f"{recipient}:{message}".encode())
+#     response = server_socket.recv(1024).decode()
+#     print(f"Server response: {response}")   
+    
+
+def main():
     # parse arguments
     if len(sys.argv) != 3:
         print("usage: python3 %s <host> <port>" % sys.argv[0]);
         quit(1)
     host = sys.argv[1]
     port = sys.argv[2]
+    #user = sys.argv[3]
 
     # # open a socket
     # clientfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # # connect to server
     # clientfd.connect((host, int(port)))
-
-    d = Dashboard(host, int(port))
+    # clientfd.sendall(user.encode()) 
     
+
+    # d = Dashboard(host, int(port), user)
     # message loop
+    username = input("Enter your username: ")
+    server_socket = connect_to_server(host, int(port), username)
+    d = Dashboard(server_socket)
+    
     while(True):
-        d.select_photo()
-        user = d.select_user()
-        print(user)
+        try:
+            print("Would you like to send a photo or receive a photo?")
+            recipient = input("Enter recipient username or receive: ")
+            if recipient == "receive":
+                d.receive_photo(server_socket)
+            else:
+                server_socket.sendall(recipient.encode())
+                response = server_socket.recv(1024).decode()
+                if response == "This user is available":
+                    d.select_photo()
+            
+            # message = input("Enter your message: ")
+            
+            # send_message(server_socket, recipient, message)
+        finally:
+            server_socket.close()
+            
+    
+        # d.select_photo()
+        # server_socket = d.check_user()
+        # d.send_message(server_socket, "samantha", "hello world!")
+        # user = d.select_user()
+        # print(user)
         
         #clientfd.sendall(data)
 
-    clientfd.close()
+    # clientfd.close()
 
 if __name__ == "__main__":
     main()
