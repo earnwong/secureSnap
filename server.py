@@ -19,6 +19,7 @@ def client_handler(connfd):
             connfd.sendall("You have successfully logged in".encode())
         else:
             connfd.sendall("Wrong username".encode())
+            return
 
         recipient = connfd.recv(1024).decode()
 
@@ -36,29 +37,12 @@ def client_handler(connfd):
         else:
             connfd.sendall("Recipient not found".encode())
         
-            
-            #file.write(data)  # Write the received data to a file
-
-            #print("File received!")
-                
-            # # Wait for data from the client
-            # data = connfd.recv(1024).decode()
-            # if not data:
-            #     break  # Connection closed
-            
-            # # recipient, message = data.split(':', 1)
-            # print(data)
-            
-            # if recipient in clients:
-            #     clients[recipient].sendall(f"From {username}: {message}".encode())
-            # else:
-            #     connfd.sendall("Recipient not found.".encode())
                 
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
         connfd.close()
-        clients.pop(username, None)  # Remove the client from the list 
+        clients[username] = None  # Remove the client from the list 
     
         
 def main():
@@ -77,7 +61,7 @@ def main():
     listenfd.bind(('', int(port)))
 
     # listen to socket
-    listenfd.listen(1)
+    listenfd.listen(5)
 
     # accept connection
     while True:
@@ -86,7 +70,6 @@ def main():
         thread.start()
     
     
-
     # # message loop
     # while(True):
         
