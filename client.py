@@ -1,10 +1,10 @@
 import sys
 import socket
 from os import _exit as quit
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import AES, PKCS1_OAEP
-from Crypto.Hash import HMAC, SHA256
-# import easygui
+# from Crypto.PublicKey import RSA
+# from Crypto.Cipher import AES, PKCS1_OAEP
+# from Crypto.Hash import HMAC, SHA256
+import easygui
 from dashboard import Dashboard
 
 # delimiter = b'<<DELIMITER>>'
@@ -68,30 +68,29 @@ def main():
     host = sys.argv[1]
     port = sys.argv[2]
 
-    while True:
-        username = input("Enter your username: ")
-        server_socket = connect_to_server(host, int(port), username)
-        
-        response = server_socket.recv(1024).decode()
-        print(response)
+    username = input("Enter your username: ")
+    server_socket = connect_to_server(host, int(port), username)
+    response = server_socket.recv(1024).decode()
+    print(response)
 
-        if response != "Wrong username":
-            break  # Exit the loop if the username is accepted
-
-        server_socket.close()  # Close the old socket before retrying
+    if response == "Wrong username":
+        print("Login failed. Please check your username.")
+        server_socket.close()
+        return
 
     d = Dashboard(server_socket)
     
-    while(True):
-        try:
-            print("Would you like to send a photo or receive a photo?")
-            recipient = input("Enter recipient username or receive: ")
+    try:
+        while(True):
+            print("Would you like to send a photo, receive a photo, or end session? Enter 'send', 'receive', or 'end':")
+            action = input().lower()
 
-            if recipient == "receive":
+            if action == "receive":
                 d.receive_photo(server_socket)
                 continue
             
-            else: 
+            elif action == "send":
+                recipient = input("Who would you like to send it to?: ")
                 server_socket.sendall(recipient.encode())
                 response = server_socket.recv(1024).decode()
             
@@ -100,22 +99,18 @@ def main():
                     d.select_photo()
                 else:
                     print(response)
-                    
-        except Exception as e:
-            print(f"An error occurred: {e}")
-        finally:
-            server_socket.close()
-            
-    
-        # d.select_photo()
-        # server_socket = d.check_user()
-        # d.send_message(server_socket, "samantha", "hello world!")
-        # user = d.select_user()
-        # print(user)
-        
-        #clientfd.sendall(data)
 
-    # clientfd.close()
+            elif action == 'end':
+                server_socket.sendall("END_SESSION".encode())
+                break
+            else:
+                print("Invalid option, please try again.")
+                        
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        server_socket.close()
+            
 
 if __name__ == "__main__":
     main()

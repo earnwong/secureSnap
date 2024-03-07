@@ -1,13 +1,13 @@
 import sys
 import socket
 from os import _exit as quit
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import AES, PKCS1_OAEP
-from Crypto.Hash import HMAC, SHA256
-from dashboard import Dashboard
+# from Crypto.PublicKey import RSA
+# from Crypto.Cipher import AES, PKCS1_OAEP
+# from Crypto.Hash import HMAC, SHA256
+# from dashboard import Dashboard
 import threading
 
-clients = {"bob": None, "samantha": None, "cathy": None}  # Dictionary to store client usernames and connections
+clients = {"bob": None, "samantha": None, "cathy": None}  # Dummy dictionary to store client usernames and connections
 
 def client_handler(connfd):
     try:
@@ -21,21 +21,27 @@ def client_handler(connfd):
             connfd.sendall("Wrong username".encode())
             return
 
-        recipient = connfd.recv(1024).decode()
+        while True:
+            recipient = connfd.recv(1024).decode()
+            if recipient == "END_SESSION":
+                print("Session ended by the client.")
+                break
 
-        if recipient in clients:
-            connfd.sendall("This user is available".encode())
-            while True:
-                data = connfd.recv(1024)  # Receive data in chunks
-                if not data:
-                    print("no more data")
-                    break  # No more data to receive
-                clients[recipient].sendall(data)
-                print("Sending data.....")
-            clients[recipient].sendall(b"END_OF_FILE") # small bug here we have to fix
-                
-        else:
-            connfd.sendall("Recipient not found".encode())
+            if recipient in clients:
+                connfd.sendall("This user is available".encode())
+
+                while True:
+                    data = connfd.recv(1024)  # Receive data in chunks
+                    if not data:
+                        print("no more data")
+                        break  # No more data to receive
+                    clients[recipient].sendall(data)
+                    print("Sending data.....")
+
+                clients[recipient].sendall(b"END_OF_FILE") # small bug here we have to fix
+                    
+            else:
+                connfd.sendall("Recipient not found".encode())
         
                 
     except Exception as e:
@@ -76,8 +82,6 @@ def main():
 
 
 
-      
-        
 
     # close connection
     connfd.close()

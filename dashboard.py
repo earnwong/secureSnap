@@ -1,12 +1,12 @@
-import easygui
+
 import sys
 import socket
 import hashlib
-
-dummy_users = {
-    "bob": hashlib.sha256("password1".encode()).hexdigest(),
-    "samantha": hashlib.sha256("password2".encode()).hexdigest(),
-}
+import easygui
+# dummy_users = {
+#     "bob": hashlib.sha256("password1".encode()).hexdigest(),
+#     "samantha": hashlib.sha256("password2".encode()).hexdigest(),
+# }
 
 class Dashboard: 
     def __init__(self, client_socket):
