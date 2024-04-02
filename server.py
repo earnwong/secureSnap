@@ -32,13 +32,18 @@ def client_handler(connfd):
 
                 while True:
                     data = connfd.recv(1024)  # Receive data in chunks
-                    if not data:
+                    #print(len(data))
+                    #print(data[-1])
+                    
+                    if (len(data) < 1024):
+                        clients[recipient].sendall(data)
                         print("no more data")
+                        sys.stdout.flush()
                         break  # No more data to receive
                     clients[recipient].sendall(data)
-                    print("Sending data.....")
-
+                    #print("Sending data.....")
                 clients[recipient].sendall(b"END_OF_FILE") # small bug here we have to fix
+
                     
             else:
                 connfd.sendall("Recipient not found".encode())

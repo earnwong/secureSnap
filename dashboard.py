@@ -19,10 +19,14 @@ class Dashboard:
             with open(file_path, 'rb') as file:
                 while True:
                     chunk = file.read(1024)  # Read the file in chunks of 1024 bytes
+                    #print(chunk)
+                    #print("\n")
+                    #print(chunk + '\n')
                     if not chunk:
                         break  # If no more data, stop the loop
                     self.client_socket.sendall(chunk)  # Send the chunk immediately
-                # print("File sent successfully.")
+                #self.client_socket.sendall(b"END_OF_FILE")
+                print("File sent successfully.")
         else:
             print("No file selected.")
 
@@ -33,7 +37,7 @@ class Dashboard:
                 if data.endswith(b"END_OF_FILE"):
                 # Remove the END_OF_FILE bytes before saving
                     file.write(data[:-len(b"END_OF_FILE")])
-                    print("Photo received successfully.")
+                    #print("Photo received successfully.")
                     break
                 file.write(data)  # Write the received data to a file
         

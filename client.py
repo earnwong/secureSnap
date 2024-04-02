@@ -83,6 +83,7 @@ def main():
     try:
         while(True):
             print("Would you like to send a photo, receive a photo, or end session? Enter 'send', 'receive', or 'end':")
+            #print("Would you like to send a photo or end session? Enter 'send' or 'end':")
             action = input().lower()
 
             if action == "receive":
@@ -97,6 +98,9 @@ def main():
                 if response == "This user is available":
                     print(response)
                     d.select_photo()
+                    
+                    #d.receive_photo(server_socket)
+                    continue
                 else:
                     print(response)
 
