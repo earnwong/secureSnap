@@ -4,6 +4,8 @@ import socket
 import hashlib
 import easygui
 import select
+from encrypt import EncryptDecrypt
+
 # dummy_users = {
 #     "bob": hashlib.sha256("password1".encode()).hexdigest(),
 #     "samantha": hashlib.sha256("password2".encode()).hexdigest(),
@@ -12,6 +14,7 @@ import select
 class Dashboard: 
     def __init__(self, client_socket):
         self.client_socket = client_socket
+        self.encdec = EncryptDecrypt()
         
     def select_photo(self):
         file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
@@ -25,6 +28,11 @@ class Dashboard:
                     #print(chunk + '\n')
                     if not chunk:
                         break  # If no more data, stop the loop
+                    
+                    self.encdec.generate_hmac_key()
+                    self.encdec.generate_rsa_keys() # comes in a pair so we need to input the two users
+                    self.encdec.generate_aes_key() # this is shared between the users
+                    
                     self.client_socket.sendall(chunk)  # Send the chunk immediately
                 #self.client_socket.sendall(b"END_OF_FILE")
                 print("File sent successfully.")
@@ -41,6 +49,8 @@ class Dashboard:
                     #print("Photo received successfully.")
                     break
                 file.write(data)  # Write the received data to a file
+                
+                
     def receive_photo1(self, server_socket):
         sockets_to_read = [server_socket]
 

@@ -1,58 +1,11 @@
 import sys
 import socket
 from os import _exit as quit
-# from Crypto.PublicKey import RSA
-# from Crypto.Cipher import AES, PKCS1_OAEP
-# from Crypto.Hash import HMAC, SHA256
 import easygui
 from dashboard import Dashboard
-
-# delimiter = b'<<DELIMITER>>'
-
-# def hmac_generate(msg, enc=False):
-#     with open("h_key.bin", "rb") as h:
-#         h_key = h.read()
-#     secret_key = HMAC.new(h_key, digestmod=SHA256)
-#     if enc:
-#         secret_key.update(msg)
-#     else:
-#         secret_key.update(msg.encode('utf-8'))
-        
-#     mac = secret_key.digest() # the tag
-    
-#     return msg, mac
-
-# def aes_encrypt(msg):
-#     a_private_key = RSA.import_key(open("a_private_key.pem").read())
-#     a_public_key = RSA.import_key(open("a_public_key.pem").read())
-#     b_public_key = RSA.import_key(open("b_public_key.pem").read())
-    
-#     # open the AES key 
-#     with open("aes.enc", 'rb') as enc_key:
-#         aes_key = enc_key.read()
-
-#     # Encrypt the AES key with the recipient's public RSA key
-#     cipher_rsa = PKCS1_OAEP.new(b_public_key)
-#     encrypted_aes_key = cipher_rsa.encrypt(aes_key)
-    
-#     # Create a new AES cipher in CTR mode
-#     cipher_aes = AES.new(aes_key, AES.MODE_CTR)
-    
-#     # Encrypt the message
-#     enc_msg = cipher_aes.encrypt(msg.encode('utf-8'))
-    
-#     # Extract the nonce used for encryption
-#     iv = cipher_aes.nonce
-    
-#     return enc_msg, encrypted_aes_key, iv
+from encrypt import EncryptDecrypt
 
 
-# def enc_then_mac_Alice(msg):
-#     enc_msg, encrypted_aes_key, iv = aes_encrypt(msg)
-
-#     enc_msg, mac = hmac_generate(enc_msg, enc=True)
-
-#     return mac, enc_msg, encrypted_aes_key, iv
 
 def connect_to_server(host, port, username):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -77,8 +30,11 @@ def main():
         print("Login failed. Please check your username.")
         server_socket.close()
         return
-
+    
     d = Dashboard(server_socket)
+    encdec = EncryptDecrypt()
+    
+    encdec.generate_rsa_keys(username)
     
     try:
         while(True):
@@ -97,6 +53,9 @@ def main():
             
                 if response == "This user is available":
                     print(response)
+                    
+                    encdec.create_session_ID(username, recipient) # this is shared between the users
+                
                     d.select_photo()
                     
                     #d.receive_photo(server_socket)

@@ -84,11 +84,6 @@ def main():
         thread = threading.Thread(target=client_handler, args=(connfd,))
         thread.start()
     
-    
-    # # message loop
-    # while(True):
-        
-
 
 
 
