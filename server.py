@@ -8,6 +8,7 @@ from os import _exit as quit
 import threading
 
 clients = {"bob": None, "samantha": None, "cathy": None}  # Dummy dictionary to store client usernames and connections
+logged_in = {"bob": None, "samantha": None, "cathy": None} # Keeps track of who logged in
 
 def client_handler(connfd):
     try:
@@ -15,6 +16,7 @@ def client_handler(connfd):
         username = connfd.recv(1024).decode()
         if username in clients:
             clients[username] = connfd
+            logged_in[username] = 'yes'
             print(f"{username} logged in.")
             connfd.sendall("You have successfully logged in".encode())
         else:
@@ -27,21 +29,28 @@ def client_handler(connfd):
                 print("Session ended by the client.")
                 break
 
-            if recipient in clients:
+            if (recipient in clients) and logged_in[recipient] == 'yes':
                 connfd.sendall("This user is available".encode())
 
                 while True:
                     data = connfd.recv(1024)  # Receive data in chunks
-                    if not data:
+                    #print(len(data))
+                    #print(data[-1])
+                    
+                    if (len(data) < 1024):
+                        clients[recipient].sendall(data)
                         print("no more data")
+                        sys.stdout.flush()
                         break  # No more data to receive
                     clients[recipient].sendall(data)
-                    print("Sending data.....")
-
+                    #print("Sending data.....")
                 clients[recipient].sendall(b"END_OF_FILE") # small bug here we have to fix
+
                     
+            elif (recipient in clients) and logged_in[recipient] != 'yes':
+                connfd.sendall("Recipient not available".encode())
             else:
-                connfd.sendall("Recipient not found".encode())
+                connfd.sendall("Recipient not in system".encode())
         
                 
     except Exception as e:
