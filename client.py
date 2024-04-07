@@ -54,7 +54,7 @@ def main():
                 if response == "This user is available":
                     print(response)
                     
-                    encdec.create_session_ID(username, recipient) # this is shared between the users
+                    # encdec.create_session_ID(username, recipient) # this is shared between the users
                 
                     d.select_photo()
                     

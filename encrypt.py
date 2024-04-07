@@ -6,13 +6,15 @@ from Crypto.Util.Padding import pad, unpad
 from Crypto import Random
 from base64 import b64encode, b64decode
 import json
+import base64
+import os
 
 
 class EncryptDecrypt:
     delimiter = b'<<DELIMITER>>'
     
     def __init__(self):
-        self.aes_dict = self.load_json()
+        pass
         
     def generate_hmac_key():
         hmac_key = get_random_bytes(16)
@@ -38,16 +40,6 @@ class EncryptDecrypt:
         
         with open("aes.enc", "wb") as aes_file:
             aes_file.write(aes_key)
-    
-    def load_json(self):
-        with open("aes_key.json", 'r') as file:
-            data = json.load(file)
-            
-        return data
-    
-    def create_session_ID(self, username, recipient):
-        
-        self.aes_dict
             
     def hmac_generate(msg, enc=False):
         with open("h_key.bin", "rb") as h:
@@ -129,9 +121,52 @@ class EncryptDecrypt:
         else:
             return
     
-obj = EncryptDecrypt()
 
+class SessionManager:
+    def __init__(self):
+        self.sessions = {}
 
+    @staticmethod
+    def generate_session_id(num_bytes=16):
+        return base64.urlsafe_b64encode(os.urandom(num_bytes)).decode('utf-8')
+    
+    @staticmethod
+    def generate_aes_key():
+        aes_key = get_random_bytes(32)  # 32 bytes * 8 = 256 bits
+        
+        return base64.urlsafe_b64encode(aes_key).decode('utf-8')
 
+    def create_session(self, username, recipient):
+        # Use a sorted tuple to ensure that the order of usernames does not matter
+        user_pair = tuple(sorted((username, recipient)))
+        
+        # Initialize variable for storing an existing session ID, if found
+        existing_session_id = None
+
+        # Iterate over the sessions to check if a session already exists for this user pair
+        for key, value in self.sessions.items():
+            if value['user'] == user_pair:
+                existing_session_id = key
+                break  # Exit the loop once a matching session is found
+
+        # If a session already exists for this user pair, return its session ID
+        if existing_session_id is not None:
+            return existing_session_id
+
+        # If no session exists, generate a new one
+        session_id = self.generate_session_id()
+        aes_key = self.generate_aes_key()
+        self.sessions[session_id] = {
+            "user": user_pair,
+            "aes_key": aes_key
+        }
+        return session_id
+
+    def delete_session(self, session_id):
+        if session_id in self.sessions:
+            del self.sessions[session_id]
+
+    def get_session(self, session_id):
+        return self.sessions.get(session_id, None)
             
     
