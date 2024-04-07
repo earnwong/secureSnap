@@ -7,6 +7,7 @@ from encrypt import EncryptDecrypt
 import base64
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
+import json
 
 
 def decrypt_aes_key(client_private_rsa_key, encrypted_aes_key):
@@ -49,15 +50,22 @@ def main():
     
     try:
         while(True):
+            logged_in = server_socket.recv(1024)
+            # Decode the bytes back to a string
+            data_str = logged_in.decode('utf-8')
+
+            # Convert the JSON string back to a dictionary
+            logged_in_received = json.loads(data_str)
+            
             print("Would you like to send a photo, end session, or continue? Enter 'send', 'end', or 'continue':")
             #print("Would you like to send a photo or end session? Enter 'send' or 'end':")
             action = input().lower()
-            
             
             if action == "continue":
                 d.receive_photo1(server_socket, username)
                 continue
             elif action == "send":
+                # receive a list of available users
                 recipient = input("Who would you like to send it to?: ")
                 server_socket.sendall(recipient.encode())
                 response = server_socket.recv(1024).decode()

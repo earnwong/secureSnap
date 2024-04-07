@@ -90,13 +90,18 @@ class EncryptDecrypt:
                    base64.b64encode(tag) + b":" + \
                    base64.b64encode(encrypted_aes_key) + b":" + \
                    base64.b64encode(cipher_aes.nonce)
-                   
-        return concatenated
+             
+        # Prefix the concatenated data with its length (in 4 bytes)
+        concatenated_length = len(concatenated)
+        length_prefix = concatenated_length.to_bytes(4, byteorder='big')
+        
+        return length_prefix + concatenated
 
 
     def aes_decrypt(self, encrypted_data, user):
         # Split the encrypted data by the delimiter
         parts = encrypted_data.split(b':')
+        print(len(parts))
         if len(parts) != 4:
             raise ValueError("Invalid encrypted data format")
         

@@ -5,7 +5,7 @@ import threading
 from encrypt import SessionManager, EncryptDecrypt
 import base64
 from Crypto.Cipher import PKCS1_OAEP
-
+import json
 
 clients = {"bob": None, "samantha": None, "cathy": None}  # Dummy dictionary to store client usernames and connections
 logged_in = {"bob": None, "samantha": None, "cathy": None} # Keeps track of who logged in
@@ -24,6 +24,22 @@ def send_aes_key_to_client(session_id, client_public_key):
 
     return encrypted_aes_key
 
+def receive_length_prefixed_data(sock):
+        # First, read the length of the data (4 bytes)
+        length_bytes = sock.recv(4)
+        if not length_bytes:
+            raise ConnectionError("Failed to receive data length prefix")
+        data_length = int.from_bytes(length_bytes, byteorder='big')
+        # print(data_length)
+        
+        # Read the specified amount of data
+        data = b''
+        while len(data) < data_length:
+            remaining_bytes = data_length - len(data)
+            data += sock.recv(remaining_bytes)
+        
+        return (data_length, length_bytes + data)       
+
 
 def client_handler(connfd):
     try:
@@ -37,7 +53,17 @@ def client_handler(connfd):
         else:
             connfd.sendall("Wrong username".encode())
             return
+        
+        
+        # Convert the dictionary to a JSON string
+        logged_in_json = json.dumps(logged_in)
 
+        # Encode the JSON string to bytes
+        logged_in_bytes = logged_in_json.encode('utf-8')
+        #send list of available users
+        connfd.sendall(logged_in_bytes)
+        
+        
         while True:
             recipient = connfd.recv(1024).decode()
             if recipient == "END_SESSION":
@@ -58,16 +84,16 @@ def client_handler(connfd):
                 connfd.sendall(send_aes_key_to_client(session_id, client_public_key))
             
                 while True:
-                    data = connfd.recv(1024)  # Receive data in chunks
+                    len_data, data = receive_length_prefixed_data(connfd)
                     
-                    if (len(data) < 1024):
+                    if (len_data < 1763):
                         clients[recipient].sendall(data)
                         print("no more data")
                         sys.stdout.flush()
                         break  # No more data to receive
                     clients[recipient].sendall(data)
                     #print("Sending data.....")
-                clients[recipient].sendall(b"END_OF_FILE") # small bug here we have to fix
+                # clients[recipient].sendall(b"END_OF_FILE") # small bug here we have to fix
 
                     
             elif (recipient in clients) and logged_in[recipient] != 'yes':

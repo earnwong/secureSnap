@@ -6,10 +6,6 @@ import easygui
 import select
 from encrypt import EncryptDecrypt
 
-# dummy_users = {
-#     "bob": hashlib.sha256("password1".encode()).hexdigest(),
-#     "samantha": hashlib.sha256("password2".encode()).hexdigest(),
-# }
 
 class Dashboard: 
     def __init__(self, client_socket):
@@ -29,6 +25,8 @@ class Dashboard:
                         break  # If no more data, stop the loop
                     
                     encrypted_data = self.encdec.aes_encrypt(chunk, recipient, aes_key)
+                    # parts = encrypted_data.split(b':')
+                    # print(len(parts))
                     
                     self.client_socket.sendall(encrypted_data)  # Send the chunk immediately
                 #self.client_socket.sendall(b"END_OF_FILE")
@@ -36,19 +34,22 @@ class Dashboard:
         else:
             print("No file selected.")
 
-
-    def receive_photo(self, server_socket):
-        with open('hello.jpg', 'wb') as file:
-            while True:
-                data = server_socket.recv(1024)  # Receive data in chunks
-                if data.endswith(b"END_OF_FILE"):
-                # Remove the END_OF_FILE bytes before saving
-                    file.write(data[:-len(b"END_OF_FILE")])
-                    #print("Photo received successfully.")
-                    break
-                file.write(data)  # Write the received data to a file
                 
-                
+    def receive_length_prefixed_data(self, sock):
+        # First, read the length of the data (4 bytes)
+        length_bytes = sock.recv(4)
+        if not length_bytes:
+            raise ConnectionError("Failed to receive data length prefix")
+        data_length = int.from_bytes(length_bytes, byteorder='big')
+        
+        # Read the specified amount of data
+        data = b''
+        while len(data) < data_length:
+            remaining_bytes = data_length - len(data)
+            data += sock.recv(remaining_bytes)
+        
+        return data            
+    
     def receive_photo1(self, server_socket, username):
         sockets_to_read = [server_socket]
 
@@ -68,51 +69,25 @@ class Dashboard:
         else:
             with open('output.jpg', 'wb') as file:
                 while True:
-                    data = server_socket.recv(1024)  # Receive data in chunks
-                    print(data)
-        
-                    if data.endswith(b"END_OF_FILE"):
+                    # data = server_socket.recv()  # Receive data in chunks
+                    # print(data)
+                    
+                    data = self.receive_length_prefixed_data(server_socket)
+                    decrypted_data = self.encdec.aes_decrypt(data, username)
+                    # print(data)
+                    
+                    if len(decrypted_data) < 1024:
+                        print("File received successfully.")
                     # Remove the END_OF_FILE bytes before saving
-                        file.write(data[:-len(b"END_OF_FILE")])
+                        #file.write(data[:-len(b"END_OF_FILE")])
                         #print("Photo received successfully.")
                         break
                     
-                    decrypted_data = self.encdec.aes_decrypt(data, username)
                     file.write(decrypted_data)  # Write the received data to a file
         
 
-    # def select_user(self):
-    #     username_list = list(dummy_users.keys())  # Extract the usernames from the dummy_users dictionary
-    #     selected_user = easygui.choicebox(msg="Select a User", title="User Selection", choices=username_list)
-    #     return selected_user
-    
-        
-        # if file_path:
-        #     with open(file_path, 'rb') as file:
-        #         chunk = file.read(1024)
-
-        #         data = file.read()
-        #         print("File sent successfully.")
-        # else:
-        #     print("No file selected.")
-
-        # return chunk
-
-    # def recieve_and_open(self):
-    #     with open('received.jpg', 'wb') as file:
-    #         while True:
-    #             data = self.client_socket.recv(1024)  # Receive data in chunks
-    #             if not data:
-    #                 break  # No more data to receive
-    #             file.write(data)  # Write the received data to a file
-
-    #         print("File received!")
-
-        # with open('received.jpg', 'wb') as file:
-        #     file.write(data)x
-        #     print("File received!")
     def close_connection(self):
         self.client_socket.close()
         
+        
 
-    # def select_user():
