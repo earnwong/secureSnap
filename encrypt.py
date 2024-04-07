@@ -11,117 +11,111 @@ import os
 
 
 class EncryptDecrypt:
-    delimiter = b'<<DELIMITER>>'
-    
-    def __init__(self):
-        pass
+    def __init__(self, keys_filename="rsa_keys.json", public_keys="rsa_public.json"):
+        self.keys_filename = keys_filename
+        self.public_keys = public_keys
         
-    def generate_hmac_key():
-        hmac_key = get_random_bytes(16)
-        with open("h_key.bin", "wb") as file:
-            file.write(hmac_key)
-
-    def generate_rsa_keys(self, user1):
-
+    def generate_rsa_keys(self, user):
+        # Generate RSA keys
         a_key = RSA.generate(2048)
-
-        a_private_key = a_key.export_key()
-        a_public_key = a_key.publickey().export_key()
+        a_private_key = a_key.export_key().decode('utf-8')
+        a_public_key = a_key.publickey().export_key().decode('utf-8')
         
-        with open(f"{user1}_private_key.pem", "wb") as prv_file:
-            prv_file.write(a_private_key)
-            
-        with open(f"{user1}_public_key.pem", "wb") as prv_file:
-            prv_file.write(a_public_key)
-            
-
-    def generate_aes_key():
-        aes_key = get_random_bytes(32)  # 32 bytes * 8 = 256 bits
+        # Load existing keys from JSON file, if it exists
+        try:
+            with open(self.keys_filename, 'r') as file:
+                keys_data = json.load(file)
+        except FileNotFoundError:
+            keys_data = {}
         
-        with open("aes.enc", "wb") as aes_file:
-            aes_file.write(aes_key)
-            
-    def hmac_generate(msg, enc=False):
-        with open("h_key.bin", "rb") as h:
-            h_key = h.read()
-        secret_key = HMAC.new(h_key, digestmod=SHA256)
-        if enc:
-            secret_key.update(msg)
-        else:
-            secret_key.update(msg.encode('utf-8'))
-            
-        mac = secret_key.digest() # the tag
+        # Update keys data with the new keys
+        keys_data[user] = {
+            "private_key": a_private_key,
+        }
         
-        return msg, mac
-
-    def aes_encrypt(msg):
-        b_public_key = RSA.import_key(open("b_public_key.pem").read())
+        # Load existing keys from JSON file, if it exists
+        try:
+            with open(self.public_keys, 'r') as file:
+                keys_data_public = json.load(file)
+        except FileNotFoundError:
+            keys_data_public = {}
         
-        # open the AES key 
-        with open("aes.enc", 'rb') as enc_key:
-            aes_key = enc_key.read()
+        # Update keys data with the new keys
+        keys_data_public[user] = {
+            "public_key": a_public_key,
+        }
+        
+        # Save the updated keys data back to the JSON file
+        with open(self.keys_filename, 'w') as file:
+            json.dump(keys_data, file, indent=4)
+        
+        # Save the updated keys data back to the JSON file
+        with open(self.public_keys, 'w') as file:
+            json.dump(keys_data_public, file, indent=4)
+            
+            
+    def load_rsa_public_key(self, user):
+        # Load the RSA keys data from the JSON file
+        with open(self.public_keys, 'r') as file:
+            keys_data = json.load(file)
+        
+        # Extract the specified RSA key for the user
+        key_data = keys_data[user]["public_key"].encode('utf-8')
+        return RSA.import_key(key_data)
+    
+    
+    def load_rsa_private_key(self, user):
+        # Load the RSA keys data from the JSON file
+        with open(self.keys_filename, 'r') as file:
+            keys_data = json.load(file)
+        
+        # Extract the specified RSA key for the user
+        key_data = keys_data[user]["private_key"].encode('utf-8')
+        return RSA.import_key(key_data)
 
-        # Encrypt the AES key with the recipient's public RSA key
-        cipher_rsa = PKCS1_OAEP.new(b_public_key)
+
+    def aes_encrypt(self, data_bytes, recipient_user, aes_key):
+        # Load the recipient's public RSA key
+        recipient_public_key = self.load_rsa_public_key(recipient_user)
+        
+        # Encrypt the data with AES-GCM
+        cipher_aes = AES.new(aes_key, AES.MODE_GCM)
+        ciphertext, tag = cipher_aes.encrypt_and_digest(data_bytes)
+        
+        # Encrypt the AES key with the recipient's RSA public key
+        cipher_rsa = PKCS1_OAEP.new(recipient_public_key, hashAlgo=SHA256)
         encrypted_aes_key = cipher_rsa.encrypt(aes_key)
         
-        # Create a new AES cipher in CTR mode
-        cipher_aes = AES.new(aes_key, AES.MODE_CTR)
+        concatenated = base64.b64encode(ciphertext) + b":" + \
+                   base64.b64encode(tag) + b":" + \
+                   base64.b64encode(encrypted_aes_key) + b":" + \
+                   base64.b64encode(cipher_aes.nonce)
+                   
+        return concatenated
+
+
+    def aes_decrypt(self, encrypted_data, user):
+        # Split the encrypted data by the delimiter
+        parts = encrypted_data.split(b':')
+        if len(parts) != 4:
+            raise ValueError("Invalid encrypted data format")
         
-        # Encrypt the message
-        enc_msg = cipher_aes.encrypt(msg.encode('utf-8'))
+        encrypted_message, tag, encrypted_aes_key, nonce = parts
+
+        # Load the user's private RSA key
+        user_private_key = self.load_rsa_private_key(user)
+
+        # Decrypt the AES key
+        cipher_rsa = PKCS1_OAEP.new(user_private_key, hashAlgo=SHA256)
+        aes_key = cipher_rsa.decrypt(base64.b64decode(encrypted_aes_key))
         
-        # Extract the nonce used for encryption
-        iv = cipher_aes.nonce
+        # Decrypt the data with AES-GCM
+        cipher_aes = AES.new(aes_key, AES.MODE_GCM, nonce=base64.b64decode(nonce))
+        decrypted_data = cipher_aes.decrypt_and_verify(base64.b64decode(encrypted_message), base64.b64decode(tag))
         
-        return enc_msg, encrypted_aes_key, iv
+        return decrypted_data
 
-
-    def enc_then_mac(self, msg):
-        enc_msg, encrypted_aes_key, iv = self.aes_encrypt(msg)
-
-        enc_msg, mac = self.hmac_generate(enc_msg, enc=True)
-
-        return mac, enc_msg, encrypted_aes_key, iv
     
-    def hmac_verify(msg, mac, enc=False):
-        with open("h_key.bin", "rb") as h:
-            h_key = h.read()
-        ver_key = HMAC.new(h_key, digestmod=SHA256)
-        if enc: 
-            ver_key.update(msg)
-        else:
-            ver_key.update(msg.encode('utf-8'))
-        try:
-            ver_key.verify(mac)
-            print(f"HMAC verified successfully.")
-            return 1
-        except ValueError:
-            print(f"Failed to verify HMAC! Your message has been tampered with.")
-            return 0
-        
-
-    def aes_decrypt(enc_msg, enc_aes_key, iv):
-        b_private_key = RSA.import_key(open("b_private_key.pem").read())
-        
-        cipher_rsa = PKCS1_OAEP.new(b_private_key)
-        decrypted_aes_key = cipher_rsa.decrypt(enc_aes_key)
-        
-        # Create a new AES cipher in CTR mode using the decrypted AES key and the nonce
-        cipher_aes = AES.new(decrypted_aes_key, AES.MODE_CTR, nonce=iv)
-        
-        # Decrypt the message
-        aes_dec = cipher_aes.decrypt(enc_msg)
-            
-        return aes_dec.decode('utf-8')
-
-    def enc_then_mac_decrypt(self, mac, enc_msg, enc_aes_key, iv):
-        if self.hmac_verify(enc_msg, mac, enc=True):
-            return self.aes_decrypt(enc_msg, enc_aes_key, iv)
-        else:
-            return
-    
-
 class SessionManager:
     def __init__(self):
         self.sessions = {}
@@ -168,5 +162,19 @@ class SessionManager:
 
     def get_session(self, session_id):
         return self.sessions.get(session_id, None)
+    
+    def delete_session_username(self, username):
+        # Initialize a list to hold the session IDs of sessions to be deleted
+        sessions_to_delete = []
+
+        # Iterate over all sessions to find those involving the specified username
+        for session_id, session_info in self.sessions.items():
+            # Check if the recipient is part of the session
+            if username in session_info["user"]:
+                sessions_to_delete.append(session_id)
+        
+        # Delete the identified sessions
+        for session_id in sessions_to_delete:
+            del self.sessions[session_id]
             
     

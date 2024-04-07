@@ -1,0 +1,8 @@
+{
+    "bob": {
+        "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5g3PVJQ5oGk7r+0hanW9\nSO0z5bwknaMYO8L0l+cP+vu1lUjxOTyC9BKf/AD9fRtVRIwB5psRzS9730O04Ewf\npYem7eVDK4nMkmMpmcN9oBSdx7JWudNm2bFol5DSXzjW/r3I5vbMr/haZrfOpPx4\npBvRm/MARKM2o6fAT8ScbjHDY5RTBbCMmGX0PiD8k/g9yw6GymQy2IYf3gLrc0Sm\ndI6bfmeZGCfDAGC+c9sn6BntwrrnqcEbyCX06xTRk3suOHRgDSkKIUnx4m/oXkoi\nl04zCDOsq/Fs/b7zpajPvIuobnyCbKAfpIDTFnCa75Ico05FvstgAPJCt7ap6WEJ\nvwIDAQAB\n-----END PUBLIC KEY-----"
+    },
+    "samantha": {
+        "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsXr1t9GJ5YOHSPj9Oezz\nisnjEtHnmAfzvTQpMVKOyQI1Zvpwqb+Vq+J8an0+zw4ny5zbQH+2/svIJ1AG6Rgt\ncc0b3b8FBoDJW0Nd4Zx2GGOWREdltuzP/AB3qh/M94EzMiYXvI185EC0YNrceozo\nEQ10o8PgmJldTO/aJg41WI6q5etMLKHfESDNSZVvMpagtd5MkxhULxfuRdSV4YB9\n8Z7oaj7wWusW/IbGD4Hw8kFSztDNYXWZOW9SZGWYnuOiqbdeLwInVGcP0vA7fS8b\n8BJ/SwosU48Jg1I6pQXDSqyRxBAEOWNzdH2IrUib8mWTNhS0zdgPjnSm/pRjEGcF\nJwIDAQAB\n-----END PUBLIC KEY-----"
+    }
+}

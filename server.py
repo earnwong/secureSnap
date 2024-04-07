@@ -1,14 +1,29 @@
 import sys
 import socket
 from os import _exit as quit
-# from Crypto.PublicKey import RSA
-# from Crypto.Cipher import AES, PKCS1_OAEP
-# from Crypto.Hash import HMAC, SHA256
-# from dashboard import Dashboard
 import threading
+from encrypt import SessionManager, EncryptDecrypt
+import base64
+from Crypto.Cipher import PKCS1_OAEP
+
 
 clients = {"bob": None, "samantha": None, "cathy": None}  # Dummy dictionary to store client usernames and connections
 logged_in = {"bob": None, "samantha": None, "cathy": None} # Keeps track of who logged in
+
+session_manager = SessionManager()
+encryptdecrypt = EncryptDecrypt()
+
+def send_aes_key_to_client(session_id, client_public_key):
+    # Assume `session_manager` is an instance of your SessionManager class
+    aes_key_b64 = session_manager.get_session(session_id)['aes_key']
+    aes_key = base64.urlsafe_b64decode(aes_key_b64.encode('utf-8'))
+
+    # Encrypt the AES key with the client's public RSA key
+    cipher_rsa = PKCS1_OAEP.new(client_public_key)
+    encrypted_aes_key = cipher_rsa.encrypt(aes_key)
+
+    return encrypted_aes_key
+
 
 def client_handler(connfd):
     try:
@@ -26,16 +41,24 @@ def client_handler(connfd):
         while True:
             recipient = connfd.recv(1024).decode()
             if recipient == "END_SESSION":
+                session_manager.delete_session_username(username)
                 print("Session ended by the client.")
                 break
 
             if (recipient in clients) and logged_in[recipient] == 'yes':
                 connfd.sendall("This user is available".encode())
-
+                
+                # generate session id
+                session_id = session_manager.create_session(username, recipient)
+                
+                # get the public key
+                client_public_key = encryptdecrypt.load_rsa_public_key(username)
+                
+                # send the encrypted aes key to the user so they can encrypt their message
+                connfd.sendall(send_aes_key_to_client(session_id, client_public_key))
+            
                 while True:
                     data = connfd.recv(1024)  # Receive data in chunks
-                    #print(len(data))
-                    #print(data[-1])
                     
                     if (len(data) < 1024):
                         clients[recipient].sendall(data)
@@ -58,7 +81,8 @@ def client_handler(connfd):
     finally:
         connfd.close()
         clients[username] = None  # Remove the client from the list 
-    
+        session_manager.delete_session_username(username)
+
         
 def main():
     # parse arguments

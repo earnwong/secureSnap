@@ -16,28 +16,26 @@ class Dashboard:
         self.client_socket = client_socket
         self.encdec = EncryptDecrypt()
         
-    def select_photo(self):
+        
+    def select_photo(self, aes_key, recipient):
         file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
 
         if file_path:
             with open(file_path, 'rb') as file:
                 while True:
                     chunk = file.read(1024)  # Read the file in chunks of 1024 bytes
-                    #print(chunk)
-                    #print("\n")
-                    #print(chunk + '\n')
+                    
                     if not chunk:
                         break  # If no more data, stop the loop
                     
-                    self.encdec.generate_hmac_key()
-                    self.encdec.generate_rsa_keys() # comes in a pair so we need to input the two users
-                    self.encdec.generate_aes_key() # this is shared between the users
+                    encrypted_data = self.encdec.aes_encrypt(chunk, recipient, aes_key)
                     
-                    self.client_socket.sendall(chunk)  # Send the chunk immediately
+                    self.client_socket.sendall(encrypted_data)  # Send the chunk immediately
                 #self.client_socket.sendall(b"END_OF_FILE")
                 print("File sent successfully.")
         else:
             print("No file selected.")
+
 
     def receive_photo(self, server_socket):
         with open('hello.jpg', 'wb') as file:
@@ -51,7 +49,7 @@ class Dashboard:
                 file.write(data)  # Write the received data to a file
                 
                 
-    def receive_photo1(self, server_socket):
+    def receive_photo1(self, server_socket, username):
         sockets_to_read = [server_socket]
 
         # List of sockets to monitor for write readiness (if needed)
@@ -71,18 +69,22 @@ class Dashboard:
             with open('output.jpg', 'wb') as file:
                 while True:
                     data = server_socket.recv(1024)  # Receive data in chunks
+                    print(data)
+        
                     if data.endswith(b"END_OF_FILE"):
                     # Remove the END_OF_FILE bytes before saving
                         file.write(data[:-len(b"END_OF_FILE")])
                         #print("Photo received successfully.")
                         break
-                    file.write(data)  # Write the received data to a file
+                    
+                    decrypted_data = self.encdec.aes_decrypt(data, username)
+                    file.write(decrypted_data)  # Write the received data to a file
         
 
-    def select_user(self):
-        username_list = list(dummy_users.keys())  # Extract the usernames from the dummy_users dictionary
-        selected_user = easygui.choicebox(msg="Select a User", title="User Selection", choices=username_list)
-        return selected_user
+    # def select_user(self):
+    #     username_list = list(dummy_users.keys())  # Extract the usernames from the dummy_users dictionary
+    #     selected_user = easygui.choicebox(msg="Select a User", title="User Selection", choices=username_list)
+    #     return selected_user
     
         
         # if file_path:
