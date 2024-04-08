@@ -136,19 +136,19 @@ def df_to_csv(file, df):
     df.to_csv(file, index = False)
 
 class FrontendDashboard:
-    def menu(self):
-        actions = ["Select Photo", "Select User", "Delete User", "Quit"]
+    def menu(self, username):
+        actions = ["Send Photo", "Continue", "Delete User", "Quit"]
 
         while True:
-            action = easygui.buttonbox("Choose an action:", choices = actions)
-            if action == "Select Photo":
-                self.select_photo()
-            if action == "Select User":
-                self.select_user()
+            action = easygui.buttonbox("Choose an action:", choices = actions, title=f'Welcome {username}!')
+            if action == "Send Photo":
+                return "send"
+            if action == "Continue":
+                return "continue"
             if action == "Delete User":
                 self.delete_user()
             if action == "Quit":
-                quit()
+                return "end"
 
     def login(self):
         actions = ["Login","Create user"]
@@ -163,11 +163,13 @@ class FrontendDashboard:
                     df = read_csv_as_df()
                     # print(df)
                     if auth_login(entered_username, entered_password, df):
-                        self.menu()
+                        return entered_username
+                        # self.menu()
                     else:
                         continue
             if action == "Create user":
                 self.create_user()
+        
 
     def select_photo(self):
         file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
@@ -182,10 +184,31 @@ class FrontendDashboard:
         else:
             print("No file selected.")
         
-    def select_user(self):
-        username_list = list(dummy_users.keys())  # Extract the usernames from the dummy_users dictionary
+        
+    def select_user(self, logged_in, username):
+        # Exclude the current user from the selection
+        if username in logged_in:
+            del logged_in[username]  # Remove current user from the list once
+
+        username_list = list(logged_in.keys())
+        username_list.append("Return to Main Menu")
+
+        # If there's only the "Return to Main Menu" option, inform the user and exit
+        if len(username_list) == 1:
+            easygui.msgbox("There are no other users available.", title="User Selection")
+            return None
+
         selected_user = easygui.choicebox(msg="Select a User", title="User Selection", choices=username_list)
+
+        if selected_user == "Return to Main Menu" or selected_user is None:
+            easygui.msgbox("Returning to the main menu.", title="User Selection")
+            return None
+
+        # If a valid selection is made, return it
         return selected_user
+
+    def display_message(self, msg):
+        easygui.msgbox(msg, title="User Selection")
     
     def create_user(self):
         while (True):
@@ -262,16 +285,16 @@ class FrontendDashboard:
                 easygui.msgbox("User does not exist")
                 break
             
-def main():
-    d = FrontendDashboard()
-    d.login()
-    d.menu()
-    # d.create_user()
-    # d.delete_user()
-    df = read_csv_as_df()
-    print(df)
+# def main():
+#     d = FrontendDashboard()
+#     d.login()
+#     d.menu()
+#     # d.create_user()
+#     # d.delete_user()
+#     df = read_csv_as_df()
+#     print(df)
 
-main()
+# main()
 
 # d = Dashboard()
 # d.create_user()

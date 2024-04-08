@@ -8,7 +8,10 @@ import base64
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
 import json
+from frontenddashboard import FrontendDashboard
 
+
+frontend_dashboard = FrontendDashboard()
 
 def decrypt_aes_key(client_private_rsa_key, encrypted_aes_key):
     # Decrypt the AES key using the client's private RSA key
@@ -32,15 +35,11 @@ def main():
     host = sys.argv[1]
     port = sys.argv[2]
 
-    username = input("Enter your username: ")
+    username = frontend_dashboard.login()
+    
     server_socket = connect_to_server(host, int(port), username)
     response = server_socket.recv(1024).decode()
     print(response)
-
-    if response == "Wrong username":
-        print("Login failed. Please check your username.")
-        server_socket.close()
-        return
     
     d = Dashboard(server_socket)
     encdec = EncryptDecrypt()
@@ -49,45 +48,50 @@ def main():
     encdec.generate_rsa_keys(username)
     
     try:
-        while(True):
-            logged_in = server_socket.recv(1024)
-            # Decode the bytes back to a string
-            data_str = logged_in.decode('utf-8')
+        while True:
+            action = frontend_dashboard.menu(username)
+            print(action)
 
-            # Convert the JSON string back to a dictionary
-            logged_in_received = json.loads(data_str)
-            
-            print("Would you like to send a photo, end session, or continue? Enter 'send', 'end', or 'continue':")
-            #print("Would you like to send a photo or end session? Enter 'send' or 'end':")
-            action = input().lower()
-            
             if action == "continue":
-                d.receive_photo1(server_socket, username)
-                continue
-            elif action == "send":
-                # receive a list of available users
-                recipient = input("Who would you like to send it to?: ")
-                server_socket.sendall(recipient.encode())
-                response = server_socket.recv(1024).decode()
-            
-                if response == "This user is available":
-                    print(response)
-                    aes_key = server_socket.recv(1024)
-                    
-                    priv_key = encdec.load_rsa_private_key(username)
-                    aes_key = decrypt_aes_key(priv_key, aes_key)
-                    
-                    d.select_photo(aes_key, recipient)
-                    #d.receive_photo(server_socket)
-                    continue
-                else:
-                    print(response)
+                rec = d.receive_photo1(server_socket, username)
+                if rec:
+                    frontend_dashboard.display_message("File received successfully")
+                else: 
+                    frontend_dashboard.display_message("No files to receive")
 
-            elif action == 'end':
+            elif action == "send":
+                server_socket.sendall(action.encode())
+                logged_in = server_socket.recv(1024)
+                # Decode the bytes back to a string
+                data_str = logged_in.decode('utf-8')
+
+                # Convert the JSON string back to a dictionary
+                logged_in_received = json.loads(data_str)
+                
+                recipient = frontend_dashboard.select_user(logged_in_received, username)
+                if recipient:
+
+                    server_socket.sendall(recipient.encode())
+                    response = server_socket.recv(1024).decode()
+                
+                    if response == "This user is available":
+                        frontend_dashboard.display_message("This user is available")
+                        aes_key = server_socket.recv(1024)
+                        
+                        priv_key = encdec.load_rsa_private_key(username)
+                        aes_key = decrypt_aes_key(priv_key, aes_key)
+                        
+                        d.select_photo(aes_key, recipient)
+                        frontend_dashboard.display_message(f'Photo sent to {recipient}')
+                    else:
+                        print(response)
+
+            elif action == "end":
                 server_socket.sendall("END_SESSION".encode())
-                break
+                quit()  # Exits the program
             else:
-                print("Invalid option, please try again.")
+                print("Invalid action. Please try again.")
+ 
                         
     except Exception as e:
         print(f"An error occurred: {e}")

@@ -25,11 +25,8 @@ class Dashboard:
                         break  # If no more data, stop the loop
                     
                     encrypted_data = self.encdec.aes_encrypt(chunk, recipient, aes_key)
-                    # parts = encrypted_data.split(b':')
-                    # print(len(parts))
                     
                     self.client_socket.sendall(encrypted_data)  # Send the chunk immediately
-                #self.client_socket.sendall(b"END_OF_FILE")
                 print("File sent successfully.")
         else:
             print("No file selected.")
@@ -66,8 +63,9 @@ class Dashboard:
         readable, writable, exceptional = select.select(sockets_to_read, sockets_to_write, sockets_with_errors, timeout)
         if not readable:
             print("no files to receive")
+            return False
         else:
-            with open('output.jpg', 'wb') as file:
+            with open(f'{username}_output.jpg', 'wb') as file:
                 while True:
                     # data = server_socket.recv()  # Receive data in chunks
                     # print(data)
@@ -84,7 +82,7 @@ class Dashboard:
                         break
                     
                     file.write(decrypted_data)  # Write the received data to a file
-        
+        return True
 
     def close_connection(self):
         self.client_socket.close()

@@ -101,7 +101,6 @@ class EncryptDecrypt:
     def aes_decrypt(self, encrypted_data, user):
         # Split the encrypted data by the delimiter
         parts = encrypted_data.split(b':')
-        print(len(parts))
         if len(parts) != 4:
             raise ValueError("Invalid encrypted data format")
         
@@ -117,6 +116,7 @@ class EncryptDecrypt:
         # Decrypt the data with AES-GCM
         cipher_aes = AES.new(aes_key, AES.MODE_GCM, nonce=base64.b64decode(nonce))
         decrypted_data = cipher_aes.decrypt_and_verify(base64.b64decode(encrypted_message), base64.b64decode(tag))
+        print("Decrypting...")
         
         return decrypted_data
 

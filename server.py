@@ -7,8 +7,8 @@ import base64
 from Crypto.Cipher import PKCS1_OAEP
 import json
 
-clients = {"bob": None, "samantha": None, "cathy": None}  # Dummy dictionary to store client usernames and connections
-logged_in = {"bob": None, "samantha": None, "cathy": None} # Keeps track of who logged in
+clients = {}  
+logged_in = {} # Keeps track of who logged in
 
 session_manager = SessionManager()
 encryptdecrypt = EncryptDecrypt()
@@ -45,23 +45,14 @@ def client_handler(connfd):
     try:
         # Receive the login username from the client
         username = connfd.recv(1024).decode()
-        if username in clients:
-            clients[username] = connfd
-            logged_in[username] = 'yes'
-            print(f"{username} logged in.")
-            connfd.sendall("You have successfully logged in".encode())
-        else:
-            connfd.sendall("Wrong username".encode())
-            return
-        
-        
-        # Convert the dictionary to a JSON string
-        logged_in_json = json.dumps(logged_in)
-
-        # Encode the JSON string to bytes
-        logged_in_bytes = logged_in_json.encode('utf-8')
-        #send list of available users
-        connfd.sendall(logged_in_bytes)
+        # if username in clients:
+        clients[username] = connfd
+        logged_in[username] = 'yes'
+        print(f"{username} logged in.")
+        connfd.sendall("You have successfully logged in".encode())
+        # else:
+        #     connfd.sendall("Wrong username".encode())
+        #     return
         
         
         while True:
@@ -71,6 +62,16 @@ def client_handler(connfd):
                 print("Session ended by the client.")
                 break
 
+            if recipient == "send":
+                # Convert the dictionary to a JSON string
+                logged_in_json = json.dumps(logged_in)
+
+                # Encode the JSON string to bytes
+                logged_in_bytes = logged_in_json.encode('utf-8')
+                #send list of available users
+                connfd.sendall(logged_in_bytes)
+                continue
+                
             if (recipient in clients) and logged_in[recipient] == 'yes':
                 connfd.sendall("This user is available".encode())
                 
@@ -92,22 +93,16 @@ def client_handler(connfd):
                         sys.stdout.flush()
                         break  # No more data to receive
                     clients[recipient].sendall(data)
-                    #print("Sending data.....")
-                # clients[recipient].sendall(b"END_OF_FILE") # small bug here we have to fix
-
-                    
-            elif (recipient in clients) and logged_in[recipient] != 'yes':
-                connfd.sendall("Recipient not available".encode())
-            else:
-                connfd.sendall("Recipient not in system".encode())
         
                 
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
+        print(f'{username} logged out')
         connfd.close()
-        clients[username] = None  # Remove the client from the list 
+        del clients[username]
         session_manager.delete_session_username(username)
+        del logged_in[username]
 
         
 def main():
