@@ -7,14 +7,13 @@ import base64
 from Crypto.Cipher import PKCS1_OAEP
 import json
 
-clients = {}  
+clients = {}  # store the connfd
 logged_in = {} # Keeps track of who logged in
 
 session_manager = SessionManager()
 encryptdecrypt = EncryptDecrypt()
 
 def send_aes_key_to_client(session_id, client_public_key):
-    # Assume `session_manager` is an instance of your SessionManager class
     aes_key_b64 = session_manager.get_session(session_id)['aes_key']
     aes_key = base64.urlsafe_b64decode(aes_key_b64.encode('utf-8'))
 

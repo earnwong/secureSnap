@@ -8,12 +8,13 @@
 - Then you can start two clients 
     - python3 client.py 'localhost' <port>
 
-When prompted for a username, you can only use:
-    - bobs
-    - samantha
-    - cathy 
+When logging in, you can use one of these usernames in the system or you can make a new one:
+    - Username: bob, Password: Bob12345!
+    - Username: samantha, Password: Sam12345!
+    - Username: cathy, Password: Cathy12345!
 
-You can choose whether you want to send or receive files. 
-- If you select "send", a pop up will come up and you can select a jpg file. 
-    - You will also be prompted for a recipient username.
-- If you select "receive", then the system will wait for someone to send you something.
+You can choose whether you want to send or receive photos. 
+- If you select "send photo", a pop up will appear where you can browse who you want to send the photo to. 
+    - Once you select your recipient, you will then be prompted with another window that allows you to upload a file
+- If you select "Continue", then the system will wait for someone to send you something.
+- If you select "Quit" you will be logged out. 
