@@ -92,6 +92,7 @@ def client_handler(connfd):
                         sys.stdout.flush()
                         break  # No more data to receive
                     clients[recipient].sendall(data)
+                connfd.sendall("photo_available".encode())
         
                 
     except Exception as e:
