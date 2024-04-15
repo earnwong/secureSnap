@@ -209,6 +209,7 @@ class FrontendDashboard:
 
     def display_message(self, msg):
         easygui.msgbox(msg, title="User Selection")
+        return True
     
     def create_user(self):
         while (True):

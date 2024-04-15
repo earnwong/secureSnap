@@ -14,7 +14,12 @@ class Dashboard:
         
         
     def select_photo(self, aes_key, recipient):
+        print("I reach select photo")
+
         file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
+
+        print("I am able to select a file to send again")
+
 
         if file_path:
             with open(file_path, 'rb') as file:
@@ -36,7 +41,7 @@ class Dashboard:
         # First, read the length of the data (4 bytes)
         length_bytes = sock.recv(4)
         if not length_bytes:
-            raise ConnectionError("Failed to receive data length prefix")
+            raise ConnectionError("Dashboard: Failed to receive data length prefix")
         data_length = int.from_bytes(length_bytes, byteorder='big')
         
         # Read the specified amount of data

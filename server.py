@@ -6,12 +6,18 @@ from encrypt import SessionManager, EncryptDecrypt
 import base64
 from Crypto.Cipher import PKCS1_OAEP
 import json
+import threading
 
 clients = {}  # store the connfd
 logged_in = {} # Keeps track of who logged in
 
 session_manager = SessionManager()
 encryptdecrypt = EncryptDecrypt()
+
+lock = threading.Lock()
+
+
+
 
 def send_aes_key_to_client(session_id, client_public_key):
     aes_key_b64 = session_manager.get_session(session_id)['aes_key']
@@ -25,9 +31,11 @@ def send_aes_key_to_client(session_id, client_public_key):
 
 def receive_length_prefixed_data(sock):
         # First, read the length of the data (4 bytes)
+        print("hanging here")
         length_bytes = sock.recv(4)
+        print("length bytes:", length_bytes)
         if not length_bytes:
-            raise ConnectionError("Failed to receive data length prefix")
+            raise ConnectionError("Server: Failed to receive data length prefix")
         data_length = int.from_bytes(length_bytes, byteorder='big')
         # print(data_length)
         
@@ -68,11 +76,16 @@ def client_handler(connfd):
                 # Encode the JSON string to bytes
                 logged_in_bytes = logged_in_json.encode('utf-8')
                 #send list of available users
+                print("Length of data to be sent:", len(logged_in_json))
                 connfd.sendall(logged_in_bytes)
                 continue
                 
             if (recipient in clients) and logged_in[recipient] == 'yes':
-                connfd.sendall("This user is available".encode())
+                print("this works")
+                userIsAvailable = len("This user is available".encode('utf-8'))
+                print("USER IS AVAIL LENGTH: ", userIsAvailable)
+                connfd.sendall("This user is available".encode('utf-8'))
+                print("PART 2")
                 
                 # generate session id
                 session_id = session_manager.create_session(username, recipient)
@@ -81,18 +94,21 @@ def client_handler(connfd):
                 client_public_key = encryptdecrypt.load_rsa_public_key(username)
                 
                 # send the encrypted aes key to the user so they can encrypt their message
-                connfd.sendall(send_aes_key_to_client(session_id, client_public_key))
+                AES_KEY = send_aes_key_to_client(session_id, client_public_key)
+                print("AES key len: ", len(AES_KEY))
+                
+                connfd.sendall(AES_KEY)
             
+                print("this stuff also works")
+                #clients[recipient].sendall("photo available".encode('utf-8'))
                 while True:
                     len_data, data = receive_length_prefixed_data(connfd)
-                    
                     if (len_data < 1763):
                         clients[recipient].sendall(data)
                         print("no more data")
                         sys.stdout.flush()
                         break  # No more data to receive
                     clients[recipient].sendall(data)
-                connfd.sendall("photo_available".encode())
         
                 
     except Exception as e:
