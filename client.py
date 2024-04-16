@@ -1,6 +1,6 @@
 import sys
 import socket
-from os import _exit as quit
+from os import _exit 
 from dashboard import Dashboard
 from encrypt import EncryptDecrypt
 from Crypto.Cipher import PKCS1_OAEP
@@ -37,7 +37,7 @@ def receive_photos_continuously(server_socket, username):
                 continue
         try:
             # Assuming the server sends a specific flag or message when a photo is available
-            print("reached here")
+            # print("reached here")
             
             # sockets_to_read = [server_socket]
             # sockets_to_write = []
@@ -77,7 +77,7 @@ def main():
     
     server_socket = connect_to_server(host, int(port), username)
     response = server_socket.recv(1024).decode()
-    print(response)
+    #print(response)
     
     d = Dashboard(server_socket)
     encdec = EncryptDecrypt()
@@ -91,55 +91,54 @@ def main():
     try:
         while True:
             action = frontend_dashboard.menu(username)
-            print(action)
+            #print(action)
 
             if action == "send":
-                print("THIS WORKS")
+                #print("THIS WORKS")
                 pause_event.set()
-                print("THIS ALSO WORKS")
+                #print("THIS ALSO WORKS")
                 # lock.acquire() 
                 try:
                     server_socket.sendall(action.encode())
-                    print("send to server socket that the user chose to send")
+                    #print("send to server socket that the user chose to send")
                     logged_in = server_socket.recv(1024)
-                    print("server socket is able to send the JSON string")
+                    #print("server socket is able to send the JSON string")
                     # Decode the bytes back to a string
                     data_str = logged_in.decode('utf-8')
-                    print("Length of received data:", len(data_str))
-                    print("Data String:", data_str)
+                    #print("Length of received data:", len(data_str))
+                    #print("Data String:", data_str)
 
                     # Convert the JSON string back to a dictionary
                     logged_in_received = json.loads(data_str)
-                    print("Logged in received dictionary:", logged_in_received)
+                    #print("Logged in received dictionary:", logged_in_received)
                     
                     recipient = frontend_dashboard.select_user(logged_in_received, username)
 
-                    print("recipient works fine")
+                    #print("recipient works fine")
                     if recipient:
 
                         server_socket.sendall(recipient.encode())
-                        print("can send to server socket")
+                        #print("can send to server socket")
                         response = server_socket.recv(22).decode('utf-8')
+
                         i = 0 
                         if (i % 2 == 1):
                             discard_data = server_socket.recv(1024)
-                            print("Discard data: ", discard_data)
+                            #print("Discard data: ", discard_data)
 
-                        # print("Not decoded response:", response)
-                        # print("Response:", response.decode('utf-8'))
                     
                         if response == "This user is available":
                             frontend_dashboard.display_message("This user is available")
 
-                            print("HI i am here")
+                            #print("HI i am here")
 
                             aes_key = server_socket.recv(1024)
-                            print("AES_KEY", len(aes_key))
+                            #print("AES_KEY", len(aes_key))
                             
                             priv_key = encdec.load_rsa_private_key(username)
                             aes_key = decrypt_aes_key(priv_key, aes_key)
                             
-                            print("CLIENT CAN THEORETICALLY SEND PHOTO")
+                            #print("CLIENT CAN THEORETICALLY SEND PHOTO")
                             d.select_photo(aes_key, recipient)
                             frontend_dashboard.display_message(f'Photo sent to {recipient}')
                         else:
@@ -151,7 +150,7 @@ def main():
             elif action == "end":
                 pause_event.set()
                 server_socket.sendall("END_SESSION".encode())
-                quit()  # Exits the program
+                _exit(0) # Exits the program
             else:
                 pause_event.set()
                 print("Invalid action. Please try again.")

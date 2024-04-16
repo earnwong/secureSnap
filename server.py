@@ -31,7 +31,7 @@ def send_aes_key_to_client(session_id, client_public_key):
 
 def receive_length_prefixed_data(sock):
         # First, read the length of the data (4 bytes)
-        print("hanging here")
+        #print("hanging here")
         length_bytes = sock.recv(4)
         print("length bytes:", length_bytes)
         if not length_bytes:
@@ -64,6 +64,7 @@ def client_handler(connfd):
         
         while True:
             recipient = connfd.recv(1024).decode()
+            #print("RECIPIENT:", recipient)
             if recipient == "END_SESSION":
                 session_manager.delete_session_username(username)
                 print("Session ended by the client.")
@@ -76,16 +77,16 @@ def client_handler(connfd):
                 # Encode the JSON string to bytes
                 logged_in_bytes = logged_in_json.encode('utf-8')
                 #send list of available users
-                print("Length of data to be sent:", len(logged_in_json))
+                #print("Length of data to be sent:", len(logged_in_json))
                 connfd.sendall(logged_in_bytes)
                 continue
                 
             if (recipient in clients) and logged_in[recipient] == 'yes':
-                print("this works")
+                #print("this works")
                 userIsAvailable = len("This user is available".encode('utf-8'))
-                print("USER IS AVAIL LENGTH: ", userIsAvailable)
+                #print("USER IS AVAIL LENGTH: ", userIsAvailable)
                 connfd.sendall("This user is available".encode('utf-8'))
-                print("PART 2")
+                #print("PART 2")
                 
                 # generate session id
                 session_id = session_manager.create_session(username, recipient)
@@ -95,11 +96,11 @@ def client_handler(connfd):
                 
                 # send the encrypted aes key to the user so they can encrypt their message
                 AES_KEY = send_aes_key_to_client(session_id, client_public_key)
-                print("AES key len: ", len(AES_KEY))
+                #print("AES key len: ", len(AES_KEY))
                 
                 connfd.sendall(AES_KEY)
             
-                print("this stuff also works")
+                #print("this stuff also works")
                 #clients[recipient].sendall("photo available".encode('utf-8'))
                 while True:
                     len_data, data = receive_length_prefixed_data(connfd)

@@ -14,11 +14,11 @@ class Dashboard:
         
         
     def select_photo(self, aes_key, recipient):
-        print("I reach select photo")
+        #print("I reach select photo")
 
         file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
 
-        print("I am able to select a file to send again")
+        #print("I am able to select a file to send again")
 
 
         if file_path:
