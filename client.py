@@ -140,7 +140,7 @@ def main():
                             
                             #print("CLIENT CAN THEORETICALLY SEND PHOTO")
                             d.select_photo(aes_key, recipient)
-                            frontend_dashboard.display_message(f'Photo sent to {recipient}')
+                            #frontend_dashboard.display_message(f'Photo sent to {recipient}')
                         else:
                             print(response)
                 finally:

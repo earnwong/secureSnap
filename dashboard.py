@@ -5,7 +5,9 @@ import hashlib
 import easygui
 import select
 from encrypt import EncryptDecrypt
+#from frontenddashboard import FrontendDashboard
 
+#frontend_dashboard = FrontendDashboard()
 
 class Dashboard: 
     def __init__(self, client_socket):
@@ -67,7 +69,7 @@ class Dashboard:
         # Use select to check for read readiness
         readable, writable, exceptional = select.select(sockets_to_read, sockets_to_write, sockets_with_errors, timeout)
         if not readable:
-            print("no files to receive")
+            #print("no files to receive")
             return False
         else:
             with open(f'{username}_output.jpg', 'wb') as file:
@@ -81,6 +83,7 @@ class Dashboard:
                     
                     if len(decrypted_data) < 1024:
                         print("File received successfully.")
+                        #frontend_dashboard.display_message('Photo sent successfully')
                     # Remove the END_OF_FILE bytes before saving
                         #file.write(data[:-len(b"END_OF_FILE")])
                         #print("Photo received successfully.")
