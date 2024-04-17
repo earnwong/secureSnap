@@ -5,6 +5,8 @@ import hashlib
 import easygui
 import select
 from encrypt import EncryptDecrypt
+from frontenddashboard import FrontendDashboard
+
 #from frontenddashboard import FrontendDashboard
 
 #frontend_dashboard = FrontendDashboard()
@@ -13,6 +15,7 @@ class Dashboard:
     def __init__(self, client_socket):
         self.client_socket = client_socket
         self.encdec = EncryptDecrypt()
+        self.frontend_dashboard = FrontendDashboard()
         
         
     def select_photo(self, aes_key, recipient):
@@ -35,6 +38,7 @@ class Dashboard:
                     
                     self.client_socket.sendall(encrypted_data)  # Send the chunk immediately
                 print("File sent successfully.")
+                self.frontend_dashboard.display_message(f'Photo sent to {recipient}')
         else:
             print("No file selected.")
 

@@ -31,13 +31,10 @@ def send_aes_key_to_client(session_id, client_public_key):
 
 def receive_length_prefixed_data(sock):
         # First, read the length of the data (4 bytes)
-        #print("hanging here")
         length_bytes = sock.recv(4)
-        #print("length bytes:", length_bytes)
         if not length_bytes:
             raise ConnectionError("Server: Failed to receive data length prefix")
         data_length = int.from_bytes(length_bytes, byteorder='big')
-        # print(data_length)
         
         # Read the specified amount of data
         data = b''
