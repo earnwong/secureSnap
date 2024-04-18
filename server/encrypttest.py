@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from encrypt import EncryptDecrypt, SessionManager
+from server.encrypt import EncryptDecrypt, SessionManager
 
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES

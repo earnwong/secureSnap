@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import client  
+import client.client as client  
 import socket
 
 class TestClient(unittest.TestCase):

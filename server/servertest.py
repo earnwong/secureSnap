@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import server 
+import server.server as server 
 
 class TestServer(unittest.TestCase):
 

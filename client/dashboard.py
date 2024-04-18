@@ -4,8 +4,7 @@ import socket
 import hashlib
 import easygui
 import select
-from encrypt import EncryptDecrypt
-from frontenddashboard import FrontendDashboard
+from frontenddashboard2 import FrontendDashboard
 
 #from frontenddashboard import FrontendDashboard
 
@@ -14,16 +13,13 @@ from frontenddashboard import FrontendDashboard
 class Dashboard: 
     def __init__(self, client_socket):
         self.client_socket = client_socket
-        self.encdec = EncryptDecrypt()
         self.frontend_dashboard = FrontendDashboard()
         
         
-    def select_photo(self, aes_key, recipient):
+    def select_photo(self, recipient):
         #print("I reach select photo")
 
         file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
-
-        #print("I am able to select a file to send again")
 
 
         if file_path:
@@ -34,9 +30,8 @@ class Dashboard:
                     if not chunk:
                         break  # If no more data, stop the loop
                     
-                    encrypted_data = self.encdec.aes_encrypt(chunk, recipient, aes_key)
                     
-                    self.client_socket.sendall(encrypted_data)  # Send the chunk immediately
+                    self.client_socket.sendall(chunk)  # Send the chunk immediately
                 print("File sent successfully.")
                 self.frontend_dashboard.display_message(f'Photo sent to {recipient}')
         else:
@@ -76,24 +71,16 @@ class Dashboard:
             #print("no files to receive")
             return False
         else:
-            with open(f'{username}_output.jpg', 'wb') as file:
-                while True:
-                    # data = server_socket.recv()  # Receive data in chunks
-                    # print(data)
-                    
-                    data = self.receive_length_prefixed_data(server_socket)
-                    decrypted_data = self.encdec.aes_decrypt(data, username)
-                    # print(data)
-                    
-                    if len(decrypted_data) < 1024:
-                        print("File received successfully.")
-                        #frontend_dashboard.display_message('Photo sent successfully')
+            with open(f'client/output/{username}_output.jpg', 'wb') as file:
+                while True:       
+                    data = server_socket.recv(1024)  # Receive data in chunks
+                    if data.endswith(b"END_OF_FILE"):
                     # Remove the END_OF_FILE bytes before saving
-                        #file.write(data[:-len(b"END_OF_FILE")])
+                        file.write(data[:-len(b"END_OF_FILE")])
                         #print("Photo received successfully.")
                         break
-                    
-                    file.write(decrypted_data)  # Write the received data to a file
+                    file.write(data)
+
         return True
 
     def close_connection(self):
