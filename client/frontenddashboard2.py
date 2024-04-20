@@ -124,13 +124,15 @@ class FrontendDashboard:
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions, title=f'Welcome (0) Superadmin:{username}!')
             if action == "Create Admin":
-                self.create_user(1)
+                return action
             if action == "Create User":
-                self.create_user(2)
+                return action
             if action == "Delete Admin/User":
-                self.delete_user(username) # cant handle non existent ones
+                return "Delete"
+                # self.delete_user(username) # cant handle non existent ones
             if action == "Reset Admin/User password":
-                self.reset_user_password(username)
+                return "Reset"
+                # self.reset_user_password(username)
             if action == "Quit":
                 return "end"
 
@@ -140,13 +142,17 @@ class FrontendDashboard:
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions, title=f'Welcome (1) Admin: {username}!')
             if action == "Create Admin":
-                self.create_user(1)
+                return action
+                # self.create_user(1)
             if action == "Create User":
-                self.create_user(2)
+                return action
+                # self.create_user(2)
             if action == "Delete User":
-                self.delete_user(username)
+                return "Delete"
+                # self.delete_user(username)
             if action == "Reset User password":
-                self.reset_user_password(username)
+                return "Reset"
+                # self.reset_user_password(username)
             if action == "Quit":
                 return "end"
 
@@ -168,7 +174,7 @@ class FrontendDashboard:
                 return "end"
 
     def login(self): # return password and username
-        actions = ["Login","Create user"]
+        actions = ["Login","Create User"]
 
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions)
@@ -180,8 +186,9 @@ class FrontendDashboard:
                     return entered_username, entered_password
 
 
-            if action == "Create user":
-                return action, None
+            if action == "Create User":
+                username = easygui.enterbox("Enter username:", "Create User")
+                return username, action
             
                 # # USER CREATION TESTING
                 # self.create_user(2) # user
@@ -227,61 +234,16 @@ class FrontendDashboard:
     def display_message(self, msg):
         easygui.msgbox(msg, title="User Selection")
     
-    def create_user(self, role):
-        while (True):
-            username = easygui.enterbox("Enter username:", "Create User")
-            # check if username exists
-            userinfo_df = read_csv_as_df()
-            entry_exists = (userinfo_df['username'] == username).any()
-            if not entry_exists:
-                break
-            if username is None:
-                return None
-            else:
-                easygui.msgbox("Username taken")
-
+    def get_password(self):
         while (True):
             password = easygui.passwordbox("Enter password:", "Create User")
             if password is None:
-                return None
+                continue
             # check if password meets requirements
             if valid_pw(password):
-                break
+                return password
             else:
                 easygui.msgbox("Invalid password", "Create User")
-        
-        # salt password
-        salt = gen_salt()
-        salt_password = password + salt
-        
-        # generate new user ID
-        try:
-            userinfo_df = read_csv_as_df()
-            sorted_userinfo_df = userinfo_df.sort_values(by="userID")
-            last_user_id = sorted_userinfo_df['userID'].iloc[-1]
-            current_new_userID = last_user_id + 1
-        except FileNotFoundError:
-            current_new_userID = 0
-        except IndexError:
-            current_new_userID = 0
-        except TypeError:
-            current_new_userID = 0
-
-        # hash salted password
-        hash_obj = hashlib.sha256()
-        hash_obj.update(salt_password.encode())
-        hex_hash_salt_pw = hash_obj.hexdigest()
-    
-        # add to password csv
-        new_userinfo = {"username":username, 
-                        "userID":str(current_new_userID), 
-                        "role":role,
-                        "password":hex_hash_salt_pw,
-                        "salt":salt,}
-
-        add_csv_record("server/userinfo.csv", new_userinfo)
-        easygui.msgbox("User updated")
-        # read csv and update user id tracker
 
     def reset_self_password(self, user):
         userinfo_df = read_csv_as_df()
@@ -293,7 +255,7 @@ class FrontendDashboard:
             # check if password meets requirements
             if valid_pw(password):
                 # update self
-                self.update_pw(user,password)
+                self.update_pw(user, password)
                 break
             else:
                 easygui.msgbox("Invalid password", "Reset password")
@@ -321,7 +283,7 @@ class FrontendDashboard:
         else:
             easygui.msgbox("User does not exist. Returning to menu...")
 
-    def delete_user(self,user):
+    def delete_user(self, user):
         # delete confirmation        
         input_df = read_csv_as_df()
         print(input_df)
@@ -358,7 +320,7 @@ class FrontendDashboard:
         if return_end == True:
             return "end"
 
-    def update_pw(self,target_user, password):
+    def update_pw(self, target_user, password):
         input_df = read_csv_as_df()
         input_df[input_df['username'] != target_user]
 

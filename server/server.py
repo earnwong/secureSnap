@@ -60,12 +60,17 @@ def user_handler(connfd, username):
         connfd.close()
         del clients[username]
         del logged_in[username]
-
-def client_handler(connfd):
-    try:
-        # Receive the login username and password from the client
-        data = connfd.recv(1024)
         
+def create_user_helper(connfd, username):
+        
+    if backenddashboard.check_user_taken(username):
+        connfd.sendall("Username taken".encode())
+        return
+        # send a message back to user that username is taken
+    else:
+        connfd.sendall("Valid".encode())
+        data = connfd.recv(1024)
+
         # Decode data from bytes to string
         data_str = data.decode('utf-8')
 
@@ -76,35 +81,134 @@ def client_handler(connfd):
         username = auth_info['username']
         password = auth_info['password']
         
-        print(username, password)
+        return (username, password)
 
-        # Authentication process
-        auth = backenddashboard.auth_login(username, password)
-        print(auth)
+def client_handler(connfd):
+    try:
+        while True:
+            # Receive the login username and password from the client
+            data = connfd.recv(1024)
             
-        if auth == "0":
-            print(f"Superadmin {username} authenticated successfully.")
-            connfd.sendall(str(auth).encode()) 
-            
-        elif auth == "1":
-            print(f"admin {username} authenticated successfully.")
-            connfd.sendall(str(auth).encode()) 
-            
-        elif auth == "2":
-            print(f"{username} authenticated successfully.")
-            connfd.sendall(str(auth).encode()) 
-            clients[username] = connfd
-            logged_in[username] = 'yes'
-            print(f"{username} logged in.")
-            
-            user_handler(connfd, username)
+            # Decode data from bytes to string
+            data_str = data.decode('utf-8')
 
-        elif auth == "User does not exist":
-            connfd.sendall(str(auth).encode()) 
+            # Parse JSON data
+            auth_info = json.loads(data_str)
+
+            # Extract username and password
+            username = auth_info['username']
+            password = auth_info['password']
+            print(username, password)
             
-        else:
-            print(f"Authentication failed for user {username}.")
-            connfd.sendall("Login failed.".encode())
+            if password == "Create User":
+                if backenddashboard.check_user_taken(username):
+                    connfd.sendall("Username taken".encode())
+                    continue
+                    # send a message back to user that username is taken
+                else:
+                    connfd.sendall("Valid".encode())
+                    data = connfd.recv(1024)
+            
+                    # Decode data from bytes to string
+                    data_str = data.decode('utf-8')
+
+                    # Parse JSON data
+                    auth_info = json.loads(data_str)
+
+                    # Extract username and password
+                    username = auth_info['username']
+                    password = auth_info['password']
+                    
+                    backenddashboard.create_user(2, username, password)
+                    # username is valid now prompt for password
+            else:
+                # authentication check
+                auth = backenddashboard.auth_login(username, password)
+                
+                if auth == "0":
+                    print(f"Superadmin {username} authenticated successfully.")
+                    connfd.sendall(str(auth).encode())
+                    
+                    while True:
+                        data = connfd.recv(1024)
+        
+                        # Decode data from bytes to string
+                        data_str = data.decode('utf-8')
+
+                        # Parse JSON data
+                        auth_info = json.loads(data_str)
+
+                        # Extract username and password
+                        username = auth_info['username']
+                        action = auth_info['password']
+                        
+                        if action == "Create User":
+                            username, password = create_user_helper(connfd, username)
+                            if username:
+                                backenddashboard.create_user(2, username, password)
+                            else:
+                                continue
+                            
+                        elif action == "Create Admin":
+                            username, password = create_user_helper(connfd, username)
+                            if username:
+                                backenddashboard.create_user(1, username, password)
+                            else:
+                                continue
+
+                        elif action == "Delete":
+                            return
+                    
+                    
+                elif auth == "1":
+                    print(f"admin {username} authenticated successfully.")
+                    connfd.sendall(str(auth).encode()) 
+                    
+                    while True:
+                        data = connfd.recv(1024)
+        
+                        # Decode data from bytes to string
+                        data_str = data.decode('utf-8')
+
+                        # Parse JSON data
+                        auth_info = json.loads(data_str)
+
+                        # Extract username and password
+                        username = auth_info['username']
+                        action = auth_info['password']
+                        
+                        if action == "Create User":
+                            username, password = create_user_helper(connfd, username)
+                            if username:
+                                backenddashboard.create_user(2, username, password)
+                            else:
+                                continue
+                            
+                        elif action == "Create Admin":
+                            username, password = create_user_helper(connfd, username)
+                            if username:
+                                backenddashboard.create_user(1, username, password)
+                            else:
+                                continue
+
+                        elif action == "Delete":
+                            return
+    
+                    
+                elif auth == "2":
+                    print(f"{username} authenticated successfully.")
+                    connfd.sendall(str(auth).encode()) 
+                    clients[username] = connfd
+                    logged_in[username] = 'yes'
+                    print(f"{username} logged in.")
+                    user_handler(connfd, username)
+
+                elif auth == "User does not exist":
+                    connfd.sendall(str(auth).encode()) 
+                    
+                else:
+                    print(f"Authentication failed for user {username}.")
+                    connfd.sendall("Login failed.".encode())
             
 
     except json.JSONDecodeError:

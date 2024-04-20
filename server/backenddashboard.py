@@ -1,6 +1,9 @@
 import easygui
 import hashlib
 import pandas as pd
+import secrets
+import csv
+
 
 class BackendDashboard():
     def __init__(self) -> None:
@@ -47,58 +50,70 @@ class BackendDashboard():
         
         else:
             return "User does not exist."
-    
-    # def create_user(self, role):
-    #     while (True):
-    #         username = easygui.enterbox("Enter username:", "Create User")
-    #         # check if username exists
-    #         userinfo_df = self.read_csv_as_df()
-    #         entry_exists = (userinfo_df['username'] == username).any()
-    #         if not entry_exists:
-    #             break
-    #         if username is None:
-    #             return None
-    #         else:
-    #             easygui.msgbox("Username taken")
-
-    #     while (True):
-    #         password = easygui.passwordbox("Enter password:", "Create User")
-    #         if password is None:
-    #             return None
-    #         # check if password meets requirements
-    #         if valid_pw(password):
-    #             break
-    #         else:
-    #             easygui.msgbox("Invalid password", "Create User")
         
-    #     # salt password
-    #     salt = gen_salt()
-    #     salt_password = password + salt
+    # def valid_pw(password):
+    #     # password rules
+    #     pw_length = len(password) > 2
+    #     pw_num_count = sum(1 for c in password if c.isdigit()) > 0
+    #     pw_special_char_count = sum(1 for c in password if isSpecialChar(c)) > 0
+    #     pw_uppercase_count= sum(1 for c in password if c.isupper()) > 0
+    #     pw_space_count = sum(1 for c in password if isSpace(c)) < 1
         
-    #     # generate new user ID
-    #     try:
-    #         userinfo_df = read_csv_as_df()
-    #         sorted_userinfo_df = userinfo_df.sort_values(by="userID")
-    #         last_user_id = sorted_userinfo_df['userID'].iloc[-1]
-    #         current_new_userID = last_user_id + 1
-    #     except FileNotFoundError:
-    #         current_new_userID = 0
-    #     except IndexError:
-    #         current_new_userID = 0
-    #     except TypeError:
-    #         current_new_userID = 0
-
-    #     # hash salted password
-    #     hash_obj = hashlib.sha256()
-    #     hash_obj.update(salt_password.encode())
-    #     hex_hash_salt_pw = hash_obj.hexdigest()
+    #     return pw_length and pw_num_count and pw_special_char_count and pw_uppercase_count and pw_space_count
     
-    #     # add to password csv
-    #     new_userinfo = {"username":username, 
-    #                     "userID":str(current_new_userID), 
-    #                     "role":role,
-    #                     "password":hex_hash_salt_pw,
-    #                     "salt":salt,}
+    def check_user_taken(self, username):
+        while (True):
+            # check if username exists
+            userinfo_df = self.read_csv_as_df()
+            entry_exists = (userinfo_df['username'] == username).any()
+            if not entry_exists:
+                break
+            if username is None:
+                return False
+            else:
+                return True
+    
+    def gen_salt(self):
+        # returns hex string
+        salt = secrets.token_bytes(16)
+        salt_hex = salt.hex()
+        return salt_hex
 
-    #     add_csv_record("server/userinfo.csv", new_userinfo)
-    #     easygui.msgbox("User updated")
+    def add_csv_record(self, file, dict):
+        # Write dictionary to CSV file
+        with open(file, 'a', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(dict.values())
+    
+    def create_user(self, role, username, password):
+        # salt password
+        salt = self.gen_salt()
+        salt_password = password + salt
+        
+        # generate new user ID
+        try:
+            userinfo_df = self.read_csv_as_df()
+            sorted_userinfo_df = userinfo_df.sort_values(by="userID")
+            last_user_id = sorted_userinfo_df['userID'].iloc[-1]
+            current_new_userID = last_user_id + 1
+        except FileNotFoundError:
+            current_new_userID = 0
+        except IndexError:
+            current_new_userID = 0
+        except TypeError:
+            current_new_userID = 0
+
+        # hash salted password
+        hash_obj = hashlib.sha256()
+        hash_obj.update(salt_password.encode())
+        hex_hash_salt_pw = hash_obj.hexdigest()
+    
+        # add to password csv
+        new_userinfo = {"username":username, 
+                        "userID":str(current_new_userID), 
+                        "role":role,
+                        "password":hex_hash_salt_pw,
+                        "salt":salt,}
+
+        self.add_csv_record("userinfo.csv", new_userinfo)
+        # read csv and update user id tracker
