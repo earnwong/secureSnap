@@ -124,7 +124,7 @@ def main():
             username, password = frontend_dashboard.login()
             print(username, password)
             
-            if username == "Create user":
+            if username == "Create user": # no functionality yet
                 server_socket.sendall("Create user".encode())
             else:
                 # Send the username and password after connecting

@@ -19,13 +19,11 @@ class BackendDashboard():
     
     def auth_login(self, entered_username, entered_password):
         userinfo_df = self.read_csv_as_df()
-        print("HEERERERERER")
         
         # check if record exists in userinfo.csv
         entry_exists = (userinfo_df['username'] == entered_username).any()
 
         if entry_exists:
-            print("HEELOOOOO")
             auth_level = self.get_auth_level(entered_username)
             # get row of desired userinput
             row = userinfo_df[userinfo_df['username'] == entered_username]
