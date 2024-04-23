@@ -21,12 +21,27 @@ backenddashboard = BackendDashboard()
 def user_handler(connfd, username):
     try:
         while True:
-            recipient = connfd.recv(1024).decode()
-            if recipient == "END_SESSION":
+            # action = connfd.recv(1024).decode()
+            
+            data = connfd.recv(1024)
+
+            # Decode data from bytes to string
+            data_str = data.decode('utf-8')
+
+            # Parse JSON data
+            auth_info = json.loads(data_str)
+
+            # Extract username and password
+            user = auth_info['username']
+            action = auth_info['password']
+            print(user)
+            print(action)
+            
+            if action == "END_SESSION":
                 print("Session ended by the client.")
                 break
 
-            if recipient == "send":
+            if user == None and action == "send":
                 # Convert the dictionary to a JSON string
                 logged_in_json = json.dumps(logged_in)
 
@@ -36,22 +51,30 @@ def user_handler(connfd, username):
                 #send list of available users
                 connfd.sendall(logged_in_bytes)
                 continue
-                
-            if (recipient in clients) and logged_in[recipient] == 'yes':
-                connfd.sendall("This user is available".encode('utf-8'))
-                
-                while True:
-                    data = connfd.recv(1024) 
+            
+            if (user in clients) and action == "send":
+                print("in here")
+                recipient = user
+                print(recipient)
+                print(logged_in)
+                if logged_in[recipient] == 'yes':
+                    connfd.sendall("This user is available".encode('utf-8'))
                     
-                    if (len(data) < 1024):
+                    while True:
+                        data = connfd.recv(1024) 
+                        
+                        if (len(data) < 1024):
+                            clients[recipient].sendall(data)
+                            print("no more data")
+                            sys.stdout.flush()
+                            break  # No more data to receive
                         clients[recipient].sendall(data)
-                        print("no more data")
-                        sys.stdout.flush()
-                        break  # No more data to receive
-                    clients[recipient].sendall(data)
-                    
-                clients[recipient].sendall(b"END_OF_FILE")
-        
+                        
+                    clients[recipient].sendall(b"END_OF_FILE")
+                
+            elif user != None and action == "Delete":
+                if backenddashboard.delete_self(user):
+                    connfd.sendall("User Removed".encode())
                 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -157,7 +180,14 @@ def client_handler(connfd):
                                 continue
 
                         elif action == "Delete":
-                            return
+                            target_user = auth_info['target_user']
+                            status = backenddashboard.delete_user(username, target_user)
+                            if status == 0:
+                                connfd.sendall("Denied".encode())
+                            elif status == 1:
+                                connfd.sendall("Success".encode())
+                            elif status == 2:
+                                connfd.sendall("User not found".encode())
                     
                     
                 elif auth == "1":
@@ -202,6 +232,8 @@ def client_handler(connfd):
                     logged_in[username] = 'yes'
                     print(f"{username} logged in.")
                     user_handler(connfd, username)
+                    
+                    
 
                 elif auth == "User does not exist":
                     connfd.sendall(str(auth).encode()) 

@@ -166,8 +166,7 @@ class FrontendDashboard:
             if action == "Receive files":
                 return "continue"
             if action == "Delete your account":
-                end = self.delete_self(username)
-                return end
+                return "Delete"
             if action == "Reset password":
                 self.reset_self_password(username)
             if action == "Quit":
@@ -196,18 +195,18 @@ class FrontendDashboard:
                 # # self.create_user(0) # superadmin
 
         
-    def select_photo(self):
-        file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
+    # def select_photo(self):
+    #     file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
 
-        if file_path:
-            with open(file_path, 'rb') as file:
-                while True:
-                    chunk = file.read(1024)  # Read the file in chunks of 1024 bytes
-                    if not chunk:
-                        break  # If no more data, stop the loop
-                # print("File sent successfully.")
-        else:
-            print("No file selected.")
+    #     if file_path:
+    #         with open(file_path, 'rb') as file:
+    #             while True:
+    #                 chunk = file.read(1024)  # Read the file in chunks of 1024 bytes
+    #                 if not chunk:
+    #                     break  # If no more data, stop the loop
+    #             # print("File sent successfully.")
+    #     else:
+    #         print("No file selected.")
         
     def select_user(self, logged_in, username):
         # Exclude the current user from the selection
@@ -283,42 +282,22 @@ class FrontendDashboard:
         else:
             easygui.msgbox("User does not exist. Returning to menu...")
 
-    def delete_user(self, user):
-        # delete confirmation        
-        input_df = read_csv_as_df()
-        print(input_df)
-        target_user = easygui.enterbox("Enter username of user to delete")
-        if entry_exists(target_user):
-            if auth_action(user, target_user):
-                # update df with user removed
-                removed_user_df = input_df[input_df['username'] != target_user]
-                print("removed user")
-                #update csv with user removed
-                df_to_csv("server/userinfo.csv", removed_user_df)
-                easygui.msgbox("User removed. Returning to menu...")
-            else:
-                easygui.msgbox("Permission denied: No authorization to delete this account. Returning to menu...")
-        else:
-            easygui.msgbox("User does not exist. Returning to menu...")
+    # def delete_self(self, username):
+    #     input_df = read_csv_as_df()
+    #     return_end = False
 
-    def delete_self(self, username):
-        input_df = read_csv_as_df()
-        return_end = False
-        # confirm deletion
-        while True:
-            confirm_delete = easygui.buttonbox("Confirm action?", choices=["Confirm", "Cancel"], title = "Confirm?")
-            if confirm_delete == "Confirm":
-                removed_user_df = input_df[input_df['username'] != username]
-                print("removed user")
-                #update csv with user removed
-                df_to_csv("userinfo.csv", removed_user_df)
-                easygui.msgbox("User removed. Quitting application...")
-                return_end = True
-                break
-            else:
-                return
-        if return_end == True:
-            return "end"
+    #         if confirm_delete == "Confirm":
+    #             removed_user_df = input_df[input_df['username'] != username]
+    #             print("removed user")
+    #             # update csv with user removed
+    #             df_to_csv("userinfo.csv", removed_user_df)
+    #             easygui.msgbox("User removed. Quitting application...")
+    #             return_end = True
+    #             break
+    #         else:
+    #             return
+    #     if return_end == True:
+    #         return "end"
 
     def update_pw(self, target_user, password):
         input_df = read_csv_as_df()

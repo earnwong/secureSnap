@@ -66,7 +66,10 @@ def user_handler(server_socket, username, d):
             pause_event.set()
             
             try:
-                server_socket.sendall(action.encode())
+                get_loggedin_info = {'username': None, 'password': action}
+                server_socket.sendall(json.dumps(get_loggedin_info).encode())
+                
+                # server_socket.sendall(action.encode())
                 
                 logged_in = server_socket.recv(1024)
                 
@@ -75,13 +78,15 @@ def user_handler(server_socket, username, d):
                 
                 # Convert the JSON string back to a dictionary
                 logged_in_received = json.loads(data_str)
-                print(username)
                 print(logged_in_received)
                 
                 recipient = frontend_dashboard.select_user(logged_in_received, username)
 
                 if recipient:
-                    server_socket.sendall(recipient.encode())
+                    sending_info = {'username': recipient, 'password': action}
+                    server_socket.sendall(json.dumps(sending_info).encode())
+                    
+                    # server_socket.sendall(recipient.encode())
                     response = server_socket.recv(22).decode('utf-8')
                 
                     if response == "This user is available":
@@ -98,6 +103,20 @@ def user_handler(server_socket, username, d):
             pause_event.set()
             server_socket.sendall("END_SESSION".encode())
             _exit(0) # Exits the program
+        
+        elif action == "Delete":
+            confirm_delete = easygui.buttonbox("Confirm action?", choices=["Confirm", "Cancel"], title = "Confirm?")
+            if confirm_delete == 'Confirm':
+                sending_info = {'username': username, 'password': action}
+                server_socket.sendall(json.dumps(sending_info).encode())
+                
+                response = server_socket.recv(1024).decode('utf-8')
+                if response == "User Removed":
+                    return
+                    # end the session
+            else: 
+                continue
+        
         else:
             pause_event.set()
             print("Invalid action. Please try again.")
@@ -127,6 +146,23 @@ def createUserHelper(username, password, server_socket):
         server_socket.sendall(json.dumps(make_account).encode())
         
         frontend_dashboard.display_message("User created successfully")
+        
+def delete_user_helper(username, action, target_user, server_socket):
+    # username is the username they want to delete, password is the action
+    login_info = {'username': username, 'password': action, 'target_user': target_user}
+    
+    # send the info to the server for checks and deletion
+    server_socket.sendall(json.dumps(login_info).encode())
+    
+    response = server_socket.recv(1024).decode()
+    
+    if response == "Denied":
+        frontend_dashboard.display_message("Permission denied: No authorization to delete this account. Returning to menu...")
+    elif response == "Success":
+        frontend_dashboard.display_message("User removed. Returning to menu...")
+    elif response == "User not found":
+        frontend_dashboard.display_message("User does not exist. Returning to menu...")
+        
         
 def main():
     # parse arguments
@@ -211,10 +247,9 @@ def main():
                 createUserHelper(username, action, server_socket)
                 
             if action == "Delete":
-                login_info = {'username': username, 'password': password}
-                server_socket.sendall(json.dumps(login_info).encode())
+                target_user = easygui.enterbox("Enter username of user to delete")
+                delete_user_helper(username, action, target_user, server_socket)
                 
-                return
             if action == "Reset":
                 login_info = {'username': username, 'password': password}
                 server_socket.sendall(json.dumps(login_info).encode())
@@ -238,7 +273,8 @@ def main():
                 createUserHelper(username, action, server_socket)
                 
             if action == "Delete User":
-                return
+                target_user = easygui.enterbox("Enter username of user to delete")
+                delete_user_helper(username, action, target_user, server_socket)
             
             if action == "Reset User password":
                 return

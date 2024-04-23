@@ -117,3 +117,40 @@ class BackendDashboard():
 
         self.add_csv_record("userinfo.csv", new_userinfo)
         # read csv and update user id tracker
+    
+    def entry_exists(self, username, input_df):
+        return (input_df['username'] == username).any()
+
+    def df_to_csv(self, file, df):
+        df.to_csv(file, index = False)
+    
+    def auth_action(self, user, target_user):
+        auth_level_deleter = self.get_auth_level(user)
+        auth_level_deletee = self.get_auth_level(target_user)
+        return auth_level_deleter < auth_level_deletee
+    
+    def delete_user(self, user, target_user):
+        # delete confirmation        
+        input_df = self.read_csv_as_df()
+        
+        if self.entry_exists(target_user, input_df):
+            if self.auth_action(user, target_user):
+                # update df with user removed
+                removed_user_df = input_df[input_df['username'] != target_user]
+                print("removed user")
+                #update csv with user removed
+                self.df_to_csv("userinfo.csv", removed_user_df)
+                
+                return 1 # successful
+            else:
+                return 0 # permission denied
+        else:
+            return 2 # user does not exist
+        
+    def delete_self(self, username):
+        input_df = self.read_csv_as_df()
+        removed_user_df = input_df[input_df['username'] != username]
+        print("removed user")
+        # update csv with user removed
+        self.df_to_csv("userinfo.csv", removed_user_df)
+        return True
