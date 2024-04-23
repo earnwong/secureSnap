@@ -180,14 +180,25 @@ class FrontendDashboard:
             if action == "Login":
                 while True:
                     entered_username = easygui.enterbox("Enter username: ", title="Login")
+                    if entered_username is None:
+                        break
                     entered_password = easygui.passwordbox("Enter password", title = "Login")
+                    if entered_password is None:
+                        break
                     
                     return entered_username, entered_password
 
 
             if action == "Create User":
-                username = easygui.enterbox("Enter username:", "Create User")
-                return username, action
+                while True:
+                    username = easygui.enterbox("Enter username:", "Create User")
+                    if username is None: # pressed cancel
+                        break
+                    elif len(username.strip()) == 0:
+                        self.display_message("Username not valid.")
+                        continue
+                    else:
+                        return username, action
             
                 # # USER CREATION TESTING
                 # self.create_user(2) # user
@@ -233,16 +244,18 @@ class FrontendDashboard:
     def display_message(self, msg):
         easygui.msgbox(msg, title="User Selection")
     
-    def get_password(self):
+    def get_password(self, role):
         while (True):
-            password = easygui.passwordbox("Enter password:", "Create User")
+            password = easygui.passwordbox("Enter password:", f'Create {role}')
             if password is None:
-                continue
+                break
             # check if password meets requirements
             if valid_pw(password):
                 return password
             else:
-                easygui.msgbox("Invalid password", "Create User")
+                easygui.msgbox("Invalid password", f'Create {role}')
+                continue
+        return None
 
     def reset_self_password(self, user):
         userinfo_df = read_csv_as_df()

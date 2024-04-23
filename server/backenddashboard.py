@@ -27,6 +27,7 @@ class BackendDashboard():
         entry_exists = (userinfo_df['username'] == entered_username).any()
 
         if entry_exists:
+            print("entry exists")
             auth_level = self.get_auth_level(entered_username)
             # get row of desired userinput
             row = userinfo_df[userinfo_df['username'] == entered_username]
@@ -49,7 +50,7 @@ class BackendDashboard():
                 return None
         
         else:
-            return "User does not exist."
+            return "User does not exist"
         
     # def valid_pw(password):
     #     # password rules
@@ -140,7 +141,6 @@ class BackendDashboard():
                 print("removed user")
                 #update csv with user removed
                 self.df_to_csv("userinfo.csv", removed_user_df)
-                
                 return 1 # successful
             else:
                 return 0 # permission denied

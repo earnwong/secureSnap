@@ -18,7 +18,7 @@ frontend_dashboard = FrontendDashboard()
 lock = threading.Lock()
 pause_event = threading.Event()
 role = None
-
+end = "END_SESSION"
 
 def connect_to_server(host, port):
     try: 
@@ -50,7 +50,6 @@ def receive_photos_continuously(server_socket, username):
         if pause_event.is_set():
                 continue
         try:
-
             d.receive_photo1(server_socket, username)
             time.sleep(2)  # Wait for 2 seconds before the next check
         except Exception as e:
@@ -101,8 +100,11 @@ def user_handler(server_socket, username, d):
 
         elif action == "end":
             pause_event.set()
-            server_socket.sendall("END_SESSION".encode())
+            sending_info = {'username': None, 'password': end}
+            server_socket.sendall(json.dumps(sending_info).encode())
+            server_socket.close()
             _exit(0) # Exits the program
+            
         
         elif action == "Delete":
             confirm_delete = easygui.buttonbox("Confirm action?", choices=["Confirm", "Cancel"], title = "Confirm?")
@@ -112,8 +114,8 @@ def user_handler(server_socket, username, d):
                 
                 response = server_socket.recv(1024).decode('utf-8')
                 if response == "User Removed":
-                    return
-                    # end the session
+                    server_socket.close()
+                    _exit(0)
             else: 
                 continue
         
@@ -121,7 +123,7 @@ def user_handler(server_socket, username, d):
             pause_event.set()
             print("Invalid action. Please try again.")
             
-def createUserHelper(username, password, server_socket):
+def createUserHelper(username, password, server_socket, role):
     # if password == "Create User": 
     # Send the username and action ("Create user") to the server
     
@@ -140,7 +142,10 @@ def createUserHelper(username, password, server_socket):
         return
     
     elif response == "Valid":
-        password = frontend_dashboard.get_password()
+        password = frontend_dashboard.get_password(role)
+        
+        if password is None:
+            return None
         
         make_account = {'username': username, 'password': password}
         server_socket.sendall(json.dumps(make_account).encode())
@@ -196,12 +201,18 @@ def main():
                         frontend_dashboard.display_message("Username Taken. Try Again.")
                         continue
                     elif response == "Valid":
-                        password = frontend_dashboard.get_password()
+                        password = frontend_dashboard.get_password("user")
+                        print(password)
+                        
+                        if password is None:
+                            continue
                         
                         make_account = {'username': username, 'password': password}
                         server_socket.sendall(json.dumps(make_account).encode())
                         
                         frontend_dashboard.display_message("User created successfully")
+                        
+                        
                 else:
                     login_info = {'username': username, 'password': password}
                     server_socket.sendall(json.dumps(login_info).encode())
@@ -219,12 +230,12 @@ def main():
                 # Handle login failure
                 quitbox = easygui.buttonbox("Incorrect password. Quit?", choices=["Quit", "Continue"])
                 if quitbox == "Quit":
-                    server_socket.sendall("END_SESSION".encode())
+                    server_socket.sendall("QUIT_AUTH_FAILED".encode())
                     server_socket.close()
-                    _exit(0)  # Exits the program
+                    _exit(0) # Exits the program
                 else:
                     # Close the current connection and loop to retry login
-                    server_socket.sendall("END_SESSION".encode())
+                    server_socket.sendall("CONTINUE".encode())
                     server_socket.close()
             elif response == "User does not exist":
                 frontend_dashboard.display_message("This user does not exist.")
@@ -236,27 +247,40 @@ def main():
     
     if role == "0":
         while True:
+            #print("IT GOES HERE GODDAMIT")
             action = frontend_dashboard.superadmin_menu(username)
             
             if action == "Create Admin":
-                username = easygui.enterbox("Enter username:", "Create Admin")
-                createUserHelper(username, action, server_socket)
+                create_username = easygui.enterbox("Enter username:", "Create Admin")
+                if create_username is None:
+                    continue
+                none_check = createUserHelper(create_username, action, server_socket, "admin")
+                if none_check is None:
+                    continue
                 
             if action == "Create User":
-                username = easygui.enterbox("Enter username:", "Create User")
-                createUserHelper(username, action, server_socket)
+                create_username = easygui.enterbox("Enter username:", "Create User")
+                if create_username is None:
+                    continue
+                none_check = createUserHelper(create_username, action, server_socket, "user")
+                if none_check is None:
+                    continue
                 
             if action == "Delete":
                 target_user = easygui.enterbox("Enter username of user to delete")
+                if target_user is None:
+                    continue
                 delete_user_helper(username, action, target_user, server_socket)
                 
             if action == "Reset":
-                login_info = {'username': username, 'password': password}
-                server_socket.sendall(json.dumps(login_info).encode())
-                
+                # login_info = {'username': username, 'password': password}
+                # server_socket.sendall(json.dumps(login_info).encode())
                 return
+            
             if action == "end":
-                server_socket.sendall("END_SESSION".encode())
+                send_info = {'username': username, 'password': "END_SESSION_SUPER_ADMIN"}
+                server_socket.sendall(json.dumps(send_info).encode())
+                server_socket.close()
                 _exit(0) # Exits the program
             
     
@@ -265,22 +289,34 @@ def main():
             action = frontend_dashboard.admin_menu(username)
             
             if action == "Create Admin":
-                username = easygui.enterbox("Enter username:", "Create Admin")
-                createUserHelper(username, action, server_socket)
+                create_username = easygui.enterbox("Enter username:", "Create Admin")
+                if create_username is None:
+                    continue
+                none_check = createUserHelper(create_username, action, server_socket, "admin")
+                if none_check is None:
+                    continue
             
             if action == "Create User":
-                username = easygui.enterbox("Enter username:", "Create User")
-                createUserHelper(username, action, server_socket)
+                create_username = easygui.enterbox("Enter username:", "Create User")
+                if create_username is None:
+                    continue
+                none_check = createUserHelper(create_username, action, server_socket, "user")
+                if none_check is None:
+                    continue
                 
-            if action == "Delete User":
+            if action == "Delete":
                 target_user = easygui.enterbox("Enter username of user to delete")
+                if target_user is None:
+                    continue
                 delete_user_helper(username, action, target_user, server_socket)
             
             if action == "Reset User password":
                 return
             
-            if action == "Quit":
-                server_socket.sendall("END_SESSION".encode())
+            if action == "end":
+                send_info = {'username': username, 'password': "END_SESSION_ADMIN"}
+                server_socket.sendall(json.dumps(send_info).encode())
+                server_socket.close()
                 _exit(0)
                 
     if role == "2":
