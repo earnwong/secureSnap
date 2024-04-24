@@ -3,6 +3,10 @@ import hashlib
 import pandas as pd
 import secrets
 import csv
+import random
+import string
+from email.message import EmailMessage
+import smtplib
 
 
 class BackendDashboard():
@@ -73,6 +77,55 @@ class BackendDashboard():
                 return False
             else:
                 return True
+            
+    def verify_email(self, email_to_verify):
+        pin = self.generate_pin()
+        self.send_ver_email(email_to_verify, pin)
+        pin_to_verify = self.get_pin()
+        email_verified = self.verify_pin(pin_to_verify, pin)
+        return email_verified
+
+    def get_pin(self):
+        while (True):
+            pin = easygui.passwordbox("Check your email and enter PIN:", 'Verify email')
+            if pin is None:
+                break
+            return pin
+
+    def verify_pin(self,pin_to_verify, pin):
+        #timer stuff should happen in here
+        while (True):
+            if pin_to_verify is None:
+                break
+            if pin_to_verify == pin:
+                return True
+            else:
+                return False
+        return None
+
+    def generate_pin(self, length=6):
+        return ''.join(random.choices(string.digits, k=length))
+
+    def send_ver_email(self,recipient_email,pin):
+        sender_email = "securesnap7@gmail.com"
+        recipient_email = recipient_email
+        subject = 'SecureSnap: Verify your email'
+        sender_pw = "rajxmnmbhvfnempj"
+        pin = pin
+        body = ("PIN: " + str(pin))
+
+        email = EmailMessage()
+        email['From'] = sender_email
+        email['To'] = recipient_email
+        email['Subject'] = subject
+        email.set_content(body)
+
+        server = smtplib.SMTP('smtp.gmail.com',587)
+        server.starttls()
+        server.login(sender_email,sender_pw)
+
+        server.sendmail(sender_email,recipient_email,email.as_string())
+        print('mail sent')
     
     def gen_salt(self):
         # returns hex string

@@ -200,23 +200,31 @@ def main():
                         #display username taken on gui
                         frontend_dashboard.display_message("Username Taken. Try Again.")
                         continue
-                    elif response == "Valid":
+                    elif response == "Valid username":
                         password = frontend_dashboard.get_password("user")
                         print(password)
-                        
                         if password is None:
                             continue
-                        
-                        make_account = {'username': username, 'password': password}
-                        server_socket.sendall(json.dumps(make_account).encode())
-                        
-                        frontend_dashboard.display_message("User created successfully")
-                        
-                        
+
+                        response = server_socket.recv(1024).decode()
+                        if response == "Invalid PIN":
+                            frontend_dashboard.display_message("Invalid PIN. Try Again.")
+                            continue
+
+                        else: # valid PIN, email verified
+                        # email verification goes here -- stuff to do once email verified by server
+                            make_account = {'username': username, 'password': password}
+                            server_socket.sendall(json.dumps(make_account).encode())
+                            
+                            frontend_dashboard.display_message("User created successfully")
+                            continue
                 else:
                     login_info = {'username': username, 'password': password}
                     server_socket.sendall(json.dumps(login_info).encode())
+                    # login properly 
+                    # if not verified then prompt
                     break
+
 
             # Wait for response from the server regarding the login attempt
             response = server_socket.recv(1024).decode()
@@ -228,7 +236,7 @@ def main():
             
             elif response == "Login failed.":
                 # Handle login failure
-                quitbox = easygui.buttonbox("Incorrect password. Quit?", choices=["Quit", "Continue"])
+                quitbox = easygui.buttonbox("Incorrect password/PIN. Quit?", choices=["Quit", "Continue"])
                 if quitbox == "Quit":
                     server_socket.sendall("QUIT_AUTH_FAILED".encode())
                     server_socket.close()

@@ -14,6 +14,9 @@ import secrets
 import csv
 import pandas as pd
 from collections import OrderedDict
+from email.message import EmailMessage
+import random
+import smtplib
 
 current_new_userID = 0
 
@@ -173,7 +176,7 @@ class FrontendDashboard:
                 return "end"
 
     def login(self): # return password and username
-        actions = ["Login","Create User"]
+        actions = ["Login","Create User",'quit']
 
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions)
@@ -199,6 +202,9 @@ class FrontendDashboard:
                         continue
                     else:
                         return username, action
+                    
+            if action == 'quit':
+                quit()
             
                 # # USER CREATION TESTING
                 # self.create_user(2) # user
@@ -352,7 +358,12 @@ class FrontendDashboard:
 
         add_csv_record("userinfo.csv",new_userinfo)
         easygui.msgbox("Password updated")
-        # read csv and update user id tracker     
+        # read csv and update user id tracker   
+
+
+    
+
+
 
 # def main():
 #     d = FrontendDashboard()

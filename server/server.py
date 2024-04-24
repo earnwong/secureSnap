@@ -144,26 +144,34 @@ def client_handler(connfd):
             print(username, password)
             
             if password == "Create User":
+                print("server line 147")
                 if backenddashboard.check_user_taken(username):
                     connfd.sendall("Username taken".encode())
                     continue
                     # send a message back to user that username is taken
                 else:
-                    connfd.sendall("Valid".encode())
-                    data = connfd.recv(1024)
-            
-                    # Decode data from bytes to string
-                    data_str = data.decode('utf-8')
+                    connfd.sendall("Valid username".encode())
+                    print("server line 154: valid username")
+                    # verify email
+                    email_verified = backenddashboard.verify_email(username)
+                    if email_verified: # email sent
+                        connfd.sendall("Valid PIN".encode())
+                        data = connfd.recv(1024)
+                
+                        # Decode data from bytes to string
+                        data_str = data.decode('utf-8')
 
-                    # Parse JSON data
-                    auth_info = json.loads(data_str)
+                        # Parse JSON data
+                        auth_info = json.loads(data_str)
 
-                    # Extract username and password
-                    username = auth_info['username']
-                    password = auth_info['password']
-                    
-                    backenddashboard.create_user(2, username, password)
-                    # username is valid now prompt for password
+                        # Extract username and password
+                        username = auth_info['username']
+                        password = auth_info['password']
+                        
+                        backenddashboard.create_user(2, username, password)
+                        # username is valid now prompt for password
+                    else:
+                        connfd.sendall("Invalid PIN")
             else:
                 # authentication check
                 print("goes into auth")
