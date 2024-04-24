@@ -167,8 +167,83 @@ def delete_user_helper(username, action, target_user, server_socket):
         frontend_dashboard.display_message("User removed. Returning to menu...")
     elif response == "User not found":
         frontend_dashboard.display_message("User does not exist. Returning to menu...")
+
+def parse_log_entries(log_data):
+    entries = log_data.strip().split("\n")
+    #print(entries)
+    structured_entries = []
+    for entry in entries:
+        parts = entry.split(", ")
         
-        
+        entry_dict = {
+            'Time': parts[0].split("Time: ")[1],
+            'IP Address': parts[1].split("IP address: ")[1],
+            'Username': parts[2].split("Username: ")[1],
+            'Status': parts[3].split("Status: ")[1],
+            'Action': parts[4].split("Action: ")[1],
+            'Role': parts[5].split("Role: ")[1],
+        }
+
+        structured_entries.append(entry_dict)
+    
+    return structured_entries
+
+def display_logs_paged(log_entries, page=0, entries_per_page=5):
+    start_index = page * entries_per_page
+    end_index = start_index + entries_per_page
+    page_entries = log_entries[start_index:end_index]
+
+    # Prepare headers and format string for more compact display
+    headers = "Time            | IP Addr       | Username | Status | Action       | Role"
+    fmt = "{:<15} | {:<13} | {:<8} | {:<6} | {:<12} | {:<4}"
+    lines = [headers] + [fmt.format(e['Time'], e['IP Address'], e['Username'], e['Status'], e['Action'], e['Role']) for e in page_entries]
+    message = "\n".join(lines)
+
+    # Append navigation text
+    nav_text = f"Page {page + 1}/{(len(log_entries) + entries_per_page - 1) // entries_per_page}\n"
+    message += nav_text + ("Previous " if start_index > 0 else "") + ("Next " if end_index < len(log_entries) else "") + "Quit"
+
+    message = "\n".join(lines)
+
+    # Append navigation instructions directly to the message
+    navigation_instructions = f"\nPage {page + 1} of {len(log_entries) // entries_per_page + 1}\n"
+    if start_index > 0:
+        navigation_instructions += "Click 'Previous' to go to the previous page. "
+    if end_index < len(log_entries):
+        navigation_instructions += "Click 'Next' to go to the next page. "
+    navigation_instructions += "Click 'Quit' to exit."
+
+    message += navigation_instructions  # Add navigation text to the main message
+
+    # Display in a buttonbox
+    choice = easygui.buttonbox(msg=message, title="Log Viewer - Page {}".format(page + 1), choices=['Previous', 'Next', 'Quit'])
+
+    if choice == "Next" and end_index < len(log_entries):
+        display_logs_paged(log_entries, page + 1, entries_per_page)
+    elif choice == "Previous" and start_index > 0:
+        display_logs_paged(log_entries, page - 1, entries_per_page)
+    elif choice == "Quit":
+        return  # Quit or close the window
+
+def view_log(username, action, server_socket):
+    send_info = {'username': username, 'password': action}
+    server_socket.sendall(json.dumps(send_info).encode())
+
+    received_data = b""
+    while True:
+        data = server_socket.recv(1024)
+        print(data)
+        if data.endswith(b"END_OF_FILE"):
+            break  # No more data is being sent from the server
+        received_data += data
+        received_data[:-len(b"END_OF_FILE")]
+
+    log_contents = received_data.decode('utf-8')
+    
+    log_entries = parse_log_entries(log_contents)
+
+    display_logs_paged(log_entries)
+
 def main():
     # parse arguments
     if len(sys.argv) != 3:
@@ -249,6 +324,7 @@ def main():
         while True:
             #print("IT GOES HERE GODDAMIT")
             action = frontend_dashboard.superadmin_menu(username)
+            print(action)
             
             if action == "Create Admin":
                 create_username = easygui.enterbox("Enter username:", "Create Admin")
@@ -276,6 +352,9 @@ def main():
                 # login_info = {'username': username, 'password': password}
                 # server_socket.sendall(json.dumps(login_info).encode())
                 return
+
+            if action == "Logs":
+                view_log(username, action, server_socket)
             
             if action == "end":
                 send_info = {'username': username, 'password': "END_SESSION_SUPER_ADMIN"}
@@ -313,6 +392,9 @@ def main():
             if action == "Reset User password":
                 return
             
+            if action == "Logs":
+                view_log(username, action, server_socket)
+
             if action == "end":
                 send_info = {'username': username, 'password': "END_SESSION_ADMIN"}
                 server_socket.sendall(json.dumps(send_info).encode())

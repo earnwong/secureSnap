@@ -17,8 +17,8 @@ class BackendDashboard():
     def get_auth_level(self, username):
         df = self.read_csv_as_df()
         row = df[df['username'] == username]
-        role = row["role"]
-        return int(role)
+        #role = row["role"]
+        return row.iloc[0]["role"]
     
     def auth_login(self, entered_username, entered_password):
         userinfo_df = self.read_csv_as_df()
@@ -47,20 +47,10 @@ class BackendDashboard():
                 return str(auth_level)
             else:
                 print('no auth')
-                return None
+                return ("Failed", str(auth_level))
         
         else:
             return "User does not exist"
-        
-    # def valid_pw(password):
-    #     # password rules
-    #     pw_length = len(password) > 2
-    #     pw_num_count = sum(1 for c in password if c.isdigit()) > 0
-    #     pw_special_char_count = sum(1 for c in password if isSpecialChar(c)) > 0
-    #     pw_uppercase_count= sum(1 for c in password if c.isupper()) > 0
-    #     pw_space_count = sum(1 for c in password if isSpace(c)) < 1
-        
-    #     return pw_length and pw_num_count and pw_special_char_count and pw_uppercase_count and pw_space_count
     
     def check_user_taken(self, username):
         while (True):

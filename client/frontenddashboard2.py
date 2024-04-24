@@ -120,7 +120,7 @@ class FrontendDashboard:
         
     # superadmin menu
     def superadmin_menu(self, username):
-        actions = ["Create Admin", "Create User", "Delete Admin/User", "Reset Admin/User password", "Quit"]
+        actions = ["Create Admin", "Create User", "Delete Admin/User", "Reset Admin/User password", "View Logs", "Quit"]
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions, title=f'Welcome (0) Superadmin:{username}!')
             if action == "Create Admin":
@@ -133,12 +133,14 @@ class FrontendDashboard:
             if action == "Reset Admin/User password":
                 return "Reset"
                 # self.reset_user_password(username)
+            if action == "View Logs":
+                return "Logs"
             if action == "Quit":
                 return "end"
 
     # admin menu
     def admin_menu(self, username):
-        actions = ["Create Admin","Create User", "Delete User", "Reset User password", "Quit"]
+        actions = ["Create Admin","Create User", "Delete User", "Reset User password", "View Logs", "Quit"]
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions, title=f'Welcome (1) Admin: {username}!')
             if action == "Create Admin":
@@ -152,6 +154,8 @@ class FrontendDashboard:
                 # self.delete_user(username)
             if action == "Reset User password":
                 return "Reset"
+            if action == "View Logs":
+                return "Logs"
                 # self.reset_user_password(username)
             if action == "Quit":
                 return "end"
