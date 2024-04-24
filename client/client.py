@@ -194,8 +194,8 @@ def display_logs_paged(log_entries, page=0, entries_per_page=5):
     page_entries = log_entries[start_index:end_index]
 
     # Prepare headers and format string for more compact display
-    headers = "Time            | IP Addr       | Username | Status | Action       | Role"
-    fmt = "{:<15} | {:<13} | {:<8} | {:<6} | {:<12} | {:<4}"
+    headers = "Time                  | IP Addr    |  Username  | Status | Action     | Role"
+    fmt = "{:<15} | {:<9} | {:<11} | {:<6} | {:<12} | {:<4}"
     lines = [headers] + [fmt.format(e['Time'], e['IP Address'], e['Username'], e['Status'], e['Action'], e['Role']) for e in page_entries]
     message = "\n".join(lines)
 
@@ -232,7 +232,6 @@ def view_log(username, action, server_socket):
     received_data = b""
     while True:
         data = server_socket.recv(1024)
-        print(data)
         if data.endswith(b"END_OF_FILE"):
             break  # No more data is being sent from the server
         received_data += data

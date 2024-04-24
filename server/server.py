@@ -248,11 +248,9 @@ def client_handler(connfd):
                                     connfd.sendall("User not found".encode())
                             
                             elif action == "Logs":
-                                print("ABOUT TO SEND")
                                 with open('server.log', 'rb') as log_file:
                                     while True:
                                         data = log_file.read(1024)  # Read in chunks of 1KB
-                                        print(data)
                                         if not data:
                                             break  # If no more data, stop the loop
                                         connfd.sendall(data)
@@ -331,6 +329,15 @@ def client_handler(connfd):
                                 elif status == 2:
                                     connfd.sendall("User not found".encode())
                             
+                            elif action == "Logs":
+                                with open('server.log', 'rb') as log_file:
+                                    while True:
+                                        data = log_file.read(1024) 
+                                        if not data:
+                                            break  # If no more data, stop the loop
+                                        connfd.sendall(data)
+                                    connfd.sendall(b"END_OF_FILE")
+                                    
                             elif action == "END_SESSION_ADMIN":
                                 break
                                 
