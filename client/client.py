@@ -176,12 +176,12 @@ def parse_log_entries(log_data):
         parts = entry.split(", ")
         
         entry_dict = {
-            'Time': parts[0].split("Time: ")[1],
-            'IP Address': parts[1].split("IP address: ")[1],
-            'Username': parts[2].split("Username: ")[1],
-            'Status': parts[3].split("Status: ")[1],
-            'Action': parts[4].split("Action: ")[1],
-            'Role': parts[5].split("Role: ")[1],
+            'Time': parts[0].split("Time: ")[1].strip(),
+            'IP Address': parts[1].split("IP address: ")[1].strip(),
+            'Username': parts[2].split("Username: ")[1].strip(),
+            'Status': parts[3].split("Status: ")[1].strip(),
+            'Action': parts[4].split("Action: ")[1].strip(),
+            'Role': parts[5].split("Role: ")[1].strip(),
         }
 
         structured_entries.append(entry_dict)

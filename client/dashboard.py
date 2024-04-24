@@ -4,17 +4,12 @@ import socket
 import hashlib
 import easygui
 import select
-from frontenddashboard2 import FrontendDashboard
+# from frontenddashboard2 import FrontendDashboard
 
-#from frontenddashboard import FrontendDashboard
-
-#frontend_dashboard = FrontendDashboard()
 
 class Dashboard: 
     def __init__(self, client_socket):
-        self.client_socket = client_socket
-        self.frontend_dashboard = FrontendDashboard()
-        
+        self.client_socket = client_socket        
         
     def select_photo(self, recipient):
         #print("I reach select photo")
@@ -33,25 +28,10 @@ class Dashboard:
                     
                     self.client_socket.sendall(chunk)  # Send the chunk immediately
                 print("File sent successfully.")
-                self.frontend_dashboard.display_message(f'Photo sent to {recipient}')
+                easygui.msgbox(f'Photo sent to {recipient}', title="User Selection")
         else:
             print("No file selected.")
 
-                
-    def receive_length_prefixed_data(self, sock):
-        # First, read the length of the data (4 bytes)
-        length_bytes = sock.recv(4)
-        if not length_bytes:
-            raise ConnectionError("Dashboard: Failed to receive data length prefix")
-        data_length = int.from_bytes(length_bytes, byteorder='big')
-        
-        # Read the specified amount of data
-        data = b''
-        while len(data) < data_length:
-            remaining_bytes = data_length - len(data)
-            data += sock.recv(remaining_bytes)
-        
-        return data            
     
     def receive_photo1(self, server_socket, username):
         sockets_to_read = [server_socket]

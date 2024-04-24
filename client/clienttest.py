@@ -1,28 +1,50 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import client.client as client  
-import socket
+from client import connect_to_server, parse_log_entries
 
-class TestClient(unittest.TestCase):
-
+class TestServerConnection(unittest.TestCase):
     @patch('client.socket.socket')
-    def test_connect_to_server(self, mock_socket):
-        mock_sock_instance = MagicMock()
-        mock_socket.return_value = mock_sock_instance
-
+    @patch('client.ssl.create_default_context')
+    def test_connect_to_server_success(self, mock_ssl_context, mock_socket):
+        # Setup
+        mock_socket.return_value = MagicMock()
+        mock_ssl = MagicMock()
+        mock_ssl_context.return_value = mock_ssl
         host = 'localhost'
-        port = 8047
-        username = 'bob'
+        port = 8000
+        
+        # Execute
+        result = connect_to_server(host, port)
+        
+        # Verify
+        mock_ssl.wrap_socket.assert_called_once()
+        self.assertIsNotNone(result)
+    
+    def test_parse_log_entries(self):
+        # Given log data with multiple entries
+        log_data = """
+        Time: 23/Apr/2024:23:13:03 , IP address: 127.0.0.1, Username: superadmin, Status: Success, Action: Log In, Role: Superadmin
+        Time: 23/Apr/2024:23:13:22 , IP address: 127.0.0.1, Username: superadmin, Status: Success, Action: Log Out, Role: Superadmin
+        Time: 23/Apr/2024:23:14:02 , IP address: 127.0.0.1, Username: beth, Status: Failed, Action: Log In, Role: User
+        Time: 23/Apr/2024:23:14:09 , IP address: 127.0.0.1, Username: admin2, Status: Success, Action: Log In, Role: Admin
+        Time: 23/Apr/2024:23:14:26 , IP address: 127.0.0.1, Username: admin2, Status: Success, Action: Log Out, Role: Admin
+        """
 
-        sock = client.connect_to_server(host, port, username)
+        # Expected structure after parsing
+        expected = [
+            {'Time': '23/Apr/2024:23:13:03', 'IP Address': '127.0.0.1', 'Username': 'superadmin', 'Status': 'Success', 'Action': 'Log In', 'Role': 'Superadmin'},
+            {'Time': '23/Apr/2024:23:13:22', 'IP Address': '127.0.0.1', 'Username': 'superadmin', 'Status': 'Success', 'Action': 'Log Out', 'Role': 'Superadmin'},
+            {'Time': '23/Apr/2024:23:14:02', 'IP Address': '127.0.0.1', 'Username': 'beth', 'Status': 'Failed', 'Action': 'Log In', 'Role': 'User'},
+            {'Time': '23/Apr/2024:23:14:09', 'IP Address': '127.0.0.1', 'Username': 'admin2', 'Status': 'Success', 'Action': 'Log In', 'Role': 'Admin'},
+            {'Time': '23/Apr/2024:23:14:26', 'IP Address': '127.0.0.1', 'Username': 'admin2', 'Status': 'Success', 'Action': 'Log Out', 'Role': 'Admin'}
+        ]
 
-        mock_socket.assert_called_with(socket.AF_INET, socket.SOCK_STREAM)
-        mock_sock_instance.connect.assert_called_with((host, port))
-        mock_sock_instance.sendall.assert_called_with(username.encode())
-        self.assertEqual(sock, mock_sock_instance)
+        # Act: Parse the log data
+        result = parse_log_entries(log_data)
+
+        # Assert: Verify that the parsed data matches the expected result
+        self.assertEqual(result, expected)
+    
 
 if __name__ == '__main__':
     unittest.main()
-
-
-

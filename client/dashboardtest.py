@@ -1,8 +1,8 @@
 import unittest
-from unittest.mock import patch, MagicMock
-import client.dashboard as dashboard  
-from client.dashboard import Dashboard
+from unittest.mock import MagicMock, mock_open, patch
+from dashboard import Dashboard
 import easygui
+
 
 class TestDashboard(unittest.TestCase):
 
