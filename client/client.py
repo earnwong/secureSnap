@@ -12,6 +12,8 @@ import threading
 import select
 import ssl
 import easygui
+import tkinter as tk
+from tkinter import ttk
 
 
 frontend_dashboard = FrontendDashboard()
@@ -174,56 +176,34 @@ def parse_log_entries(log_data):
     structured_entries = []
     for entry in entries:
         parts = entry.split(", ")
-        
+
         entry_dict = {
             'Time': parts[0].split("Time: ")[1].strip(),
             'IP Address': parts[1].split("IP address: ")[1].strip(),
             'Username': parts[2].split("Username: ")[1].strip(),
             'Status': parts[3].split("Status: ")[1].strip(),
             'Action': parts[4].split("Action: ")[1].strip(),
-            'Role': parts[5].split("Role: ")[1].strip(),
+            'Done By': parts[5].split("Done By: ")[1].strip(),
+            'Role': parts[6].split("Role: ")[1].strip(),
         }
 
         structured_entries.append(entry_dict)
     
     return structured_entries
 
-def display_logs_paged(log_entries, page=0, entries_per_page=5):
-    start_index = page * entries_per_page
-    end_index = start_index + entries_per_page
-    page_entries = log_entries[start_index:end_index]
+def display_logs(logs):
+    root = tk.Tk()
+    root.title("Log Viewer")
 
-    # Prepare headers and format string for more compact display
-    headers = "Time                  | IP Addr    |  Username  | Status | Action     | Role"
-    fmt = "{:<15} | {:<9} | {:<11} | {:<6} | {:<12} | {:<4}"
-    lines = [headers] + [fmt.format(e['Time'], e['IP Address'], e['Username'], e['Status'], e['Action'], e['Role']) for e in page_entries]
-    message = "\n".join(lines)
+    tree = ttk.Treeview(root, columns=('Time', 'IP Address', 'Username', 'Status', 'Action', 'Done By', 'Role'), show='headings')
+    for col in tree['columns']:
+        tree.heading(col, text=col)
 
-    # Append navigation text
-    nav_text = f"Page {page + 1}/{(len(log_entries) + entries_per_page - 1) // entries_per_page}\n"
-    message += nav_text + ("Previous " if start_index > 0 else "") + ("Next " if end_index < len(log_entries) else "") + "Quit"
-
-    message = "\n".join(lines)
-
-    # Append navigation instructions directly to the message
-    navigation_instructions = f"\nPage {page + 1} of {len(log_entries) // entries_per_page + 1}\n"
-    if start_index > 0:
-        navigation_instructions += "Click 'Previous' to go to the previous page. "
-    if end_index < len(log_entries):
-        navigation_instructions += "Click 'Next' to go to the next page. "
-    navigation_instructions += "Click 'Quit' to exit."
-
-    message += navigation_instructions  # Add navigation text to the main message
-
-    # Display in a buttonbox
-    choice = easygui.buttonbox(msg=message, title="Log Viewer - Page {}".format(page + 1), choices=['Previous', 'Next', 'Quit'])
-
-    if choice == "Next" and end_index < len(log_entries):
-        display_logs_paged(log_entries, page + 1, entries_per_page)
-    elif choice == "Previous" and start_index > 0:
-        display_logs_paged(log_entries, page - 1, entries_per_page)
-    elif choice == "Quit":
-        return  # Quit or close the window
+    for log in logs:
+        tree.insert("", tk.END, values=(log['Time'], log['IP Address'], log['Username'], log['Status'], log['Action'], log['Done By'], log['Role']))
+    
+    tree.pack(expand=True, fill=tk.BOTH)
+    root.mainloop()
 
 def view_log(username, action, server_socket):
     send_info = {'username': username, 'password': action}
@@ -241,7 +221,7 @@ def view_log(username, action, server_socket):
     
     log_entries = parse_log_entries(log_contents)
 
-    display_logs_paged(log_entries)
+    display_logs(log_entries)
 
 def main():
     # parse arguments
@@ -286,11 +266,18 @@ def main():
                         
                         frontend_dashboard.display_message("User created successfully")
                         
-                        
                 else:
                     login_info = {'username': username, 'password': password}
                     server_socket.sendall(json.dumps(login_info).encode())
-                    break
+                    
+                    response = server_socket.recv(1024).decode()
+                    print("response:", response)
+                    if response == "You are logged in already":
+                        frontend_dashboard.display_message("You are already logged in.")
+                        continue
+                    elif response == "auth":
+                        break
+            
 
             # Wait for response from the server regarding the login attempt
             response = server_socket.recv(1024).decode()

@@ -241,20 +241,20 @@ class FrontendDashboard:
                 continue
         return None
 
-    # def reset_self_password(self, user):
-    #     userinfo_df = read_csv_as_df()
-    #     print(userinfo_df)
-    #     while(True):
-    #         password = easygui.passwordbox("Enter new password:", "Reset password")
-    #         if password is None:
-    #             return None
-    #         # check if password meets requirements
-    #         if valid_pw(password):
-    #             # update self
-    #             self.update_pw(user, password)
-    #             break
-    #         else:
-    #             easygui.msgbox("Invalid password", "Reset password")
+    def reset_self_password(self, user):
+        userinfo_df = read_csv_as_df()
+        print(userinfo_df)
+        while(True):
+            password = easygui.passwordbox("Enter new password:", "Reset password")
+            if password is None:
+                return None
+            # check if password meets requirements
+            if valid_pw(password):
+                # update self
+                self.update_pw(user, password)
+                break
+            else:
+                easygui.msgbox("Invalid password", "Reset password")
 
     # def reset_user_password(self, user):
     #     userinfo_df = read_csv_as_df()
@@ -278,23 +278,6 @@ class FrontendDashboard:
     #             easygui.msgbox("Unauthorized action. Returning to menu...")
     #     else:
     #         easygui.msgbox("User does not exist. Returning to menu...")
-
-    # def delete_self(self, username):
-    #     input_df = read_csv_as_df()
-    #     return_end = False
-
-    #         if confirm_delete == "Confirm":
-    #             removed_user_df = input_df[input_df['username'] != username]
-    #             print("removed user")
-    #             # update csv with user removed
-    #             df_to_csv("userinfo.csv", removed_user_df)
-    #             easygui.msgbox("User removed. Quitting application...")
-    #             return_end = True
-    #             break
-    #         else:
-    #             return
-    #     if return_end == True:
-    #         return "end"
 
     # def update_pw(self, target_user, password):
     #     input_df = read_csv_as_df()
