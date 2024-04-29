@@ -49,9 +49,19 @@ def connect_to_server(host, port):
 def receive_photos_continuously(server_socket, username):
     d = Dashboard(server_socket)
     while True:
-        if pause_event.is_set():
-                continue
+        time.sleep(10)
+        event_set = pause_event.is_set()
+        while event_set:
+        #print("event_set", event_set)
+       #if event_set == True:
+            #("Pause event in receive photos:", pause_event.is_set())
+            #print("hi")
+            #time.sleep(10)
+            event_set = pause_event.is_set()
+            continue
+        #pause_event.wait()
         try:
+            print("i am ")
             d.receive_photo1(server_socket, username)
             time.sleep(2)  # Wait for 2 seconds before the next check
         except Exception as e:
@@ -65,6 +75,7 @@ def user_handler(server_socket, username, d):
 
         if action == "send":
             pause_event.set()
+            print("Pause event when I click send:", pause_event.is_set())
             
             try:
                 get_loggedin_info = {'username': None, 'password': action}
@@ -79,7 +90,7 @@ def user_handler(server_socket, username, d):
                 
                 # Convert the JSON string back to a dictionary
                 logged_in_received = json.loads(data_str)
-                print(logged_in_received)
+                #print(logged_in_received)
                 
                 recipient = frontend_dashboard.select_user(logged_in_received, username)
 
@@ -395,7 +406,6 @@ def main():
         
         try:
             user_handler(server_socket, username, d)
-                            
         except Exception as e:
             print(f"An error occurred: {e}")
         finally:

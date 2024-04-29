@@ -18,6 +18,8 @@ class Dashboard:
 
 
         if file_path:
+            #print("I end up going here")
+            #print(file_path)
             with open(file_path, 'rb') as file:
                 while True:
                     chunk = file.read(1024)  # Read the file in chunks of 1024 bytes
@@ -48,9 +50,10 @@ class Dashboard:
         # Use select to check for read readiness
         readable, writable, exceptional = select.select(sockets_to_read, sockets_to_write, sockets_with_errors, timeout)
         if not readable:
-            #print("no files to receive")
+            print("no files to receive")
             return False
         else:
+            print("there is a file to be received")
             with open(f'client/output/{username}_output.jpg', 'wb') as file:
                 while True:       
                     data = server_socket.recv(1024)  # Receive data in chunks
