@@ -114,17 +114,22 @@ def user_handler(server_socket, username, d):
         elif action == "block":
             pause_event.set()
             try:
-                get_loggedin_info = {'username': username, 'password': action}
-                server_socket.sendall(json.dumps(get_loggedin_info).encode())
                 target_user = easygui.enterbox("Enter username of user to block")
                 if target_user is None:
+                    #server_socket.recv(1)
+                    get_loggedin_info = {'username': None, 'password': action}
+                    server_socket.sendall(json.dumps(get_loggedin_info).encode())
                     continue
-                #print("target user:", target_user)
-                server_socket.sendall(target_user.encode())
-                status = server_socket.recv(1024).decode()
-                #status = int(status)
-                print("status:", status)
-                blockUserHelper(status)
+                else: 
+                    #server_socket.recv()
+                    get_loggedin_info = {'username': username, 'password': action}
+                    server_socket.sendall(json.dumps(get_loggedin_info).encode())
+                    #print("target user:", target_user)
+                    server_socket.sendall(target_user.encode())
+                    status = server_socket.recv(1024).decode()
+                    #status = int(status)
+                    print("status:", status)
+                    blockUserHelper(status)
             #time.sleep(10)
             finally:
                 pause_event.clear()
@@ -134,6 +139,7 @@ def user_handler(server_socket, username, d):
             sending_info = {'username': None, 'password': end}
             print("i can go into end")
             server_socket.sendall(json.dumps(sending_info).encode())
+            print("i send something")
             server_socket.close()
             _exit(0) # Exits the program
             

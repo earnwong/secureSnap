@@ -47,13 +47,14 @@ def user_handler(connfd, username):
             # action = connfd.recv(1024).decode()
             
             data = connfd.recv(1024)
-            
-            print("data:", data)
+            #print("data:", data)
+            #print("connfd:", connfd.recv(1024))
+            #print("connfd1:", connfd.recv(1024))
             # Decode data from bytes to string
             data_str = data.decode('utf-8')
-            print('data_str:', data_str)
+            #print('data_str:', data_str)
             # Parse JSON data
-            print("i can come here")
+            #print("i can come here")
             auth_info = json.loads(data_str)
             print("auth_info:", auth_info)
 
@@ -106,6 +107,10 @@ def user_handler(connfd, username):
                     clients[recipient].sendall(b"END_OF_FILE")
                     print("file sent successfully")
             
+            elif (user == None) and action == "block":
+                #connfd.sendall("nothing".encode())
+                continue
+
             elif (user != None) and action == "block": 
                 user_to_block = connfd.recv(1024).decode()
                 user_to_block = str(user_to_block)
