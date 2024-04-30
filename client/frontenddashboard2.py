@@ -159,14 +159,14 @@ class FrontendDashboard:
                 return "end"
 
     def user_menu(self, username):
-        actions = ["Send Photo", "Receive files", "Delete your account", "Reset password", "Quit"]
+        actions = ["Send Photo", "Block Users", "Delete your account", "Reset password", "Quit"]
         # user menu
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions, title=f'Welcome (2) User: {username}!')
             if action == "Send Photo":
                 return "send"
-            if action == "Receive files":
-                return "continue"
+            if action == "Block Users":
+                return "block"
             if action == "Delete your account":
                 return "Delete"
             if action == "Reset password":

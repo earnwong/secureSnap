@@ -14,6 +14,7 @@ import ssl
 import easygui
 import tkinter as tk
 from tkinter import ttk
+import struct
 
 
 frontend_dashboard = FrontendDashboard()
@@ -52,16 +53,9 @@ def receive_photos_continuously(server_socket, username):
         time.sleep(10)
         event_set = pause_event.is_set()
         while event_set:
-        #print("event_set", event_set)
-       #if event_set == True:
-            #("Pause event in receive photos:", pause_event.is_set())
-            #print("hi")
-            #time.sleep(10)
             event_set = pause_event.is_set()
             continue
-        #pause_event.wait()
         try:
-            print("i am ")
             d.receive_photo1(server_socket, username)
             time.sleep(2)  # Wait for 2 seconds before the next check
         except Exception as e:
@@ -72,6 +66,10 @@ def receive_photos_continuously(server_socket, username):
 def user_handler(server_socket, username, d): 
     while True:
         action = frontend_dashboard.user_menu(username)
+
+
+        print("Action:", action)
+
 
         if action == "send":
             pause_event.set()
@@ -105,15 +103,36 @@ def user_handler(server_socket, username, d):
                         frontend_dashboard.display_message("This user is available")
                         
                         d.select_photo(recipient)
-                        
+                    
+                    elif response == "Blocked":
+                        frontend_dashboard.display_message("This user is not available")
                     else:
                         print(response)
+            finally:
+                pause_event.clear()
+
+        elif action == "block":
+            pause_event.set()
+            try:
+                get_loggedin_info = {'username': username, 'password': action}
+                server_socket.sendall(json.dumps(get_loggedin_info).encode())
+                target_user = easygui.enterbox("Enter username of user to block")
+                if target_user is None:
+                    continue
+                #print("target user:", target_user)
+                server_socket.sendall(target_user.encode())
+                status = server_socket.recv(1024).decode()
+                #status = int(status)
+                print("status:", status)
+                blockUserHelper(status)
+            #time.sleep(10)
             finally:
                 pause_event.clear()
 
         elif action == "end":
             pause_event.set()
             sending_info = {'username': None, 'password': end}
+            print("i can go into end")
             server_socket.sendall(json.dumps(sending_info).encode())
             server_socket.close()
             _exit(0) # Exits the program
@@ -135,7 +154,8 @@ def user_handler(server_socket, username, d):
         else:
             pause_event.set()
             print("Invalid action. Please try again.")
-            
+
+
 def createUserHelper(username, password, server_socket, role):
     # if password == "Create User": 
     # Send the username and action ("Create user") to the server
@@ -165,6 +185,18 @@ def createUserHelper(username, password, server_socket, role):
         
         frontend_dashboard.display_message("User created successfully")
         
+def blockUserHelper(status):
+    #login_info = {'username': username, 'password': action, 'target_user': target_user}
+    #server_socket.sendall(json.dumps(login_info).encode())
+    #response = server_socket.recv(1024).decode()
+    status = int(status)
+    if status == 0:
+        frontend_dashboard.display_message("Persmission denied: No authorization to block this account. Returning to menu...")
+    elif status == 1:
+        frontend_dashboard.display_message("Successfully blocked this user. Returning to menu...")
+    elif status == 2:
+        frontend_dashboard.display_message("User does not exist. Returning to menu...")
+
 def delete_user_helper(username, action, target_user, server_socket):
     # username is the username they want to delete, password is the action
     login_info = {'username': username, 'password': action, 'target_user': target_user}

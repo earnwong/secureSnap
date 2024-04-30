@@ -10,10 +10,12 @@ import threading
 import ssl
 import datetime
 from backenddashboard import BackendDashboard
+import struct
 
 clients = {}  # store the connfd
 logged_in = {} # Keeps track of the users who logged in
 admin_logged_in = {} # admin/superadmin log in tracker
+blocked_users = {}
 
 
 
@@ -45,17 +47,22 @@ def user_handler(connfd, username):
             # action = connfd.recv(1024).decode()
             
             data = connfd.recv(1024)
-
+            
+            print("data:", data)
             # Decode data from bytes to string
             data_str = data.decode('utf-8')
-
+            print('data_str:', data_str)
             # Parse JSON data
+            print("i can come here")
             auth_info = json.loads(data_str)
+            print("auth_info:", auth_info)
 
             # Extract username and password
             user = auth_info['username']
             action = auth_info['password']
-            
+            print("user", user)
+            print("action", action)
+            #print(logged_in)
             if user == None and action == "END_SESSION":
                 print("Session ended by the client.")
                 break
@@ -73,8 +80,18 @@ def user_handler(connfd, username):
             
             if (user in clients) and action == "send":
                 recipient = user
+                #print("I AM HERE")
                 if logged_in[recipient] == 'yes':
-                    connfd.sendall("This user is available".encode('utf-8'))
+                    #connfd.sendall("This user is available".encode('utf-8'))
+                    #print(blocked_users)
+                    #print(blocked_users[recipient])
+                    #print(username)
+                    if username not in blocked_users[recipient]:
+                        print('not blocked')
+                        connfd.sendall("This user is available".encode('utf-8'))
+                    else:
+                        print('blocked')
+                        connfd.sendall("Blocked".encode('utf-8'))
                     
                     while True:
                         data = connfd.recv(1024) 
@@ -88,16 +105,37 @@ def user_handler(connfd, username):
                         
                     clients[recipient].sendall(b"END_OF_FILE")
                     print("file sent successfully")
-                
+            
+            elif (user != None) and action == "block": 
+                user_to_block = connfd.recv(1024).decode()
+                user_to_block = str(user_to_block)
+                #print(user_to_block)
+                status = backenddashboard.check_blocked_user(user, user_to_block)
+                #print("status:", status)
+                #print(blocked_users)
+                if status == 1:
+                    blocked_users[user].extend([user_to_block])
+                #print(blocked_users)
+                #status_proper_encoding = struct.pack("!i", status)
+                connfd.sendall(str(status).encode())
+                continue
+
             elif user != None and action == "Delete":
                 if backenddashboard.delete_self(user):
                     log_action(connfd, user, user, "User", "Delete Account", "Success")
                     connfd.sendall("User Removed".encode())
                     break
+            # elif action == "end":
+            #     print('here')
                 
+                
+    except json.JSONDecodeError:
+        print("Failed to decode JSON data")
+        connfd.sendall("Invalid data format.".encode())
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
+        print("i go to the log out part")
         print(f'{username} logged out')
         try:
             log_action(connfd, username, username, "User", "Log Out", "Success")
@@ -379,6 +417,7 @@ def client_handler(connfd):
                     connfd.sendall(str(auth).encode()) 
                     clients[username] = connfd
                     logged_in[username] = 'yes'
+                    blocked_users[username] = []
                     print(f"{username} logged in.")
                     log_action(connfd, username, username, "User", "Log In", "Success")
                     user_handler(connfd, username)

@@ -8,7 +8,7 @@ import csv
 class BackendDashboard():
     def __init__(self) -> None:
         pass
-    
+
     def read_csv_as_df(self):
         filename = "userinfo.csv"
         df = pd.read_csv(filename)
@@ -118,8 +118,18 @@ class BackendDashboard():
     def auth_action(self, user, target_user):
         auth_level_deleter = self.get_auth_level(user)
         auth_level_deletee = self.get_auth_level(target_user)
-        return auth_level_deleter < auth_level_deletee
+        return auth_level_deleter <= auth_level_deletee
     
+    def check_blocked_user(self, user, user_to_block):
+        input_df = self.read_csv_as_df()
+        if self.entry_exists(user_to_block, input_df):
+            if self.auth_action(user, user_to_block):
+                return 1 # can block user
+            else:
+                return 0 # cannot block user (permission denied)
+        else:
+            return 2 # user_to_block doesn't exist
+
     def delete_user(self, user, target_user):
         # delete confirmation        
         input_df = self.read_csv_as_df()
