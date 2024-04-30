@@ -1,3 +1,4 @@
+import datetime
 import sys
 import socket
 from os import _exit as quit
@@ -141,38 +142,56 @@ def client_handler(connfd):
             # Extract username and password
             username = auth_info['username']
             password = auth_info['password']
+            action = auth_info['action']
             print(username, password)
             
-            if password == "Create User":
+            if action == "Create User":
                 print("server line 147")
                 if backenddashboard.check_user_taken(username):
                     connfd.sendall("Username taken".encode())
                     continue
                     # send a message back to user that username is taken
+                # STEP 2 - send "valid username" if username does not exist
                 else:
                     connfd.sendall("Valid username".encode())
-                    print("server line 154: valid username")
+                    response = connfd.recv(1024).decode()
                     # verify email
-                    email_verified = backenddashboard.verify_email(username)
-                    if email_verified: # email sent
-                        connfd.sendall("Valid PIN".encode())
-                        data = connfd.recv(1024)
-                
-                        # Decode data from bytes to string
-                        data_str = data.decode('utf-8')
+                    # wait for password to be verified first
+                    if response == "Valid password":
+                        pin = backenddashboard.send_email_and_return_pin(username)
+                        connfd.sendall("Get PIN".encode())
+                        pin_to_verify = connfd.recv(1024).decode()
+                        email_verified = backenddashboard.verify_pin(pin_to_verify,pin)
+                        if email_verified: # email sent
+                            # start_time = datetime.datetime.now()
+                            # end_time = connfd.recv(1024).decode()
+                            # time_elapsed = end_time-start_time
+                            # print(start_time,end_time,time_elapsed)
+                            # if time_elapsed.total_seconds() < 10:
+                            #     connfd.sendall("Time up")
 
-                        # Parse JSON data
-                        auth_info = json.loads(data_str)
+                            print("email verified")
+                            connfd.sendall("Valid PIN".encode())
+                            data = connfd.recv(1024)
+                    
+                            # Decode data from bytes to string
+                            data_str = data.decode('utf-8')
 
-                        # Extract username and password
-                        username = auth_info['username']
-                        password = auth_info['password']
-                        
-                        backenddashboard.create_user(2, username, password)
-                        # username is valid now prompt for password
-                    else:
-                        connfd.sendall("Invalid PIN")
-            else:
+                            # Parse JSON data
+                            auth_info = json.loads(data_str)
+
+                            # Extract username and password
+                            username = auth_info['username']
+                            password = auth_info['password']
+                            verified = auth_info['verified']
+                            
+                            backenddashboard.create_user(2, username, password, verified)
+                            # username is valid now prompt for password
+                            continue
+                        else:
+                            connfd.sendall("Invalid PIN")
+
+            else: # login
                 # authentication check
                 print("goes into auth")
                 auth = backenddashboard.auth_login(username, password)

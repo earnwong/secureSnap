@@ -1,3 +1,4 @@
+import time
 import easygui
 import hashlib
 import pandas as pd
@@ -78,13 +79,24 @@ class BackendDashboard():
             else:
                 return True
             
-    def verify_email(self, email_to_verify):
+    
+    # def verify_email(self, email_to_verify):
+    #     pin = self.generate_pin()
+    #     self.send_ver_email(email_to_verify, pin)
+    #     pin_to_verify = self.get_pin()
+    #     email_verified = self.verify_pin(pin_to_verify, pin)
+    #     return email_verified
+    
+    def send_email_and_return_pin(self, email_to_verify):
         pin = self.generate_pin()
         self.send_ver_email(email_to_verify, pin)
-        pin_to_verify = self.get_pin()
-        email_verified = self.verify_pin(pin_to_verify, pin)
-        return email_verified
+        return pin
 
+    # def verify_pin(self):
+    #     pin_to_verify = self.get_pin()
+    #     email_verified = self.verify_pin(pin_to_verify, pin)
+    #     return email_verified
+    
     def get_pin(self):
         while (True):
             pin = easygui.passwordbox("Check your email and enter PIN:", 'Verify email')
@@ -92,8 +104,9 @@ class BackendDashboard():
                 break
             return pin
 
-    def verify_pin(self,pin_to_verify, pin):
+    def verify_pin(self, pin_to_verify, pin):
         #timer stuff should happen in here
+        # pin_to_verify = self.get_pin()
         while (True):
             if pin_to_verify is None:
                 break
@@ -139,7 +152,7 @@ class BackendDashboard():
             writer = csv.writer(csvfile)
             writer.writerow(dict.values())
     
-    def create_user(self, role, username, password):
+    def create_user(self, role, username, password, verified):
         # salt password
         salt = self.gen_salt()
         salt_password = password + salt
@@ -167,7 +180,8 @@ class BackendDashboard():
                         "userID":str(current_new_userID), 
                         "role":role,
                         "password":hex_hash_salt_pw,
-                        "salt":salt,}
+                        "salt":salt,
+                        "verified":verified}
 
         self.add_csv_record("userinfo.csv", new_userinfo)
         # read csv and update user id tracker
@@ -207,3 +221,12 @@ class BackendDashboard():
         # update csv with user removed
         self.df_to_csv("userinfo.csv", removed_user_df)
         return True
+    
+    def timer(self, seconds):
+        while seconds:
+            print(seconds)
+            time.sleep(1)
+            seconds -= 1
+        
+        print('Time is up!')
+        return True  # Signal that time is up
