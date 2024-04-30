@@ -54,22 +54,6 @@ def receive_photos_continuously(server_socket, username, queue):
 
     while True:
         time.sleep(10)
-        accept_deny = server_socket.recv(1024)
-        #print("Accept_deny:", accept_deny)
-        if accept_deny is not None:
-            print("accept/deny:", username)
-            queue.put("accept")
-            print(queue.get())
-            #frontend_dashboard.display_message(f"{accept_deny} is trying to send an image")
-            #decision = easygui.enterbox(f"Would you like to accept or deny an image from {accept_deny}")
-            #print(decision)
-        #if accept_deny:
-            #frontend_dashboard.display_message(f"{accept_deny} is trying to send an image")
-            #decision = easygui.enterbox("Would you like to accept or deny")
-            #if decision == "deny":
-                #break
-            #elif decision == "accept":
-                #continue
         event_set = pause_event.is_set()
         while event_set:
             event_set = pause_event.is_set()
@@ -86,14 +70,8 @@ def user_handler(server_socket, username, d, queue):
     while True:
         action = frontend_dashboard.user_menu(username)
 
-        if not (queue.empty()):
-            print("queue:", queue.get())
-            frontend_dashboard.display_message("hi")
 
         print("Action:", action)
-
-        # if queue:
-        #     frontend_dashboard.display_message("Accept?")
 
 
         if action == "send":
@@ -331,33 +309,12 @@ def main():
         else:
             while True:
                 # Prompt user for username and password
-                username, password = frontend_dashboard.login()
-                print(username, password)
+                action = frontend_dashboard.landing_page()
+                print(action)
                 
-                if password == "Create User": 
-                    # Send the username and action ("Create user") to the server
-                    login_info = {'username': username, 'password': password}
-                    server_socket.sendall(json.dumps(login_info).encode())
-                    
-                    response = server_socket.recv(1024).decode()
-                    if response == "Username taken":
-                        #display username taken on gui
-                        frontend_dashboard.display_message("Username Taken. Try Again.")
-                        continue
-                    elif response == "Valid":
-                        password = frontend_dashboard.get_password("user")
-                        print(password)
-                        
-                        if password is None:
-                            continue
-                        
-                        make_account = {'username': username, 'password': password}
-                        server_socket.sendall(json.dumps(make_account).encode())
-                        
-                        frontend_dashboard.display_message("User created successfully")
-                        
-                else:
-                    login_info = {'username': username, 'password': password}
+                if action == "Login":
+                    username, password = frontend_dashboard.login()
+                    login_info = {'username': username, 'password': password, 'action': "Login"}
                     server_socket.sendall(json.dumps(login_info).encode())
                     
                     response = server_socket.recv(1024).decode()
@@ -367,8 +324,54 @@ def main():
                         continue
                     elif response == "auth":
                         break
-            
 
+                elif action == "Create User": 
+                    username, password = frontend_dashboard.create_user()
+                    # STEP 1 - send username
+                    auth_info = {'username': username, 'password': password, 'action': "Create User"}
+                    print(auth_info)
+                    server_socket.sendall(json.dumps(auth_info).encode())
+                    print("login info sent")
+                    
+                    response = server_socket.recv(1024).decode()
+                    print(response)
+
+                    if response == "Username taken":
+                        #display username taken on gui
+                        frontend_dashboard.display_message("Username Taken. Try Again.")
+                        continue
+                    elif response == "Valid username":
+                        # verify 
+                        while True: # repeat until valid pw is entered
+                            if frontend_dashboard.valid_pw(password):
+                                # STEP 3 - IF PW VALID, SEND USERNAME, PW for username to be verified by server
+                                server_socket.sendall("Valid password".encode())
+                                response = server_socket.recv(1024).decode()
+                                print(response)
+                                
+                                if response == "Get PIN": 
+                                    pin_to_verify = frontend_dashboard.get_pin()
+                                    server_socket.sendall(pin_to_verify.encode())
+                                    response = server_socket.recv(1024).decode()
+                                    print(response)
+
+                                    if response == "Invalid PIN":
+                                        frontend_dashboard.display_message("Invalid PIN. Try Again.")
+                                        continue
+
+                                    if response == "Time up":
+                                        frontend_dashboard.display_message("You took too long to input the PIN. Returning to menu...")
+                                        continue
+
+                                    else: # valid PIN, email verified
+                                    # email verification goes here -- stuff to do once email verified by server
+                                        make_account = {'username': username, 'password': password, 'verified': True}
+                                        server_socket.sendall(json.dumps(make_account).encode())
+                                        
+                                        frontend_dashboard.display_message("User created successfully")
+                                        break
+
+            
             # Wait for response from the server regarding the login attempt
             response = server_socket.recv(1024).decode()
 

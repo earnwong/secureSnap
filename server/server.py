@@ -93,7 +93,6 @@ def user_handler(connfd, username):
                     if username not in blocked_users[recipient]:
                         print('not blocked')
                         connfd.sendall("This user is available".encode('utf-8'))
-                        clients[recipient].sendall(f"{username}".encode('utf-8'))
                     else:
                         print('blocked')
                         connfd.sendall("Blocked".encode('utf-8'))
@@ -202,33 +201,83 @@ def client_handler(connfd):
             # Extract username and password
             username = auth_info['username']
             password = auth_info['password']
+            action = auth_info['action']
             print(username, password)
+            print(action)
             
-            if password == "Create User":
-                # create user 
+            if action == "Create User":
+                print("server line 147")
                 if backenddashboard.check_user_taken(username):
                     connfd.sendall("Username taken".encode())
                     continue
                     # send a message back to user that username is taken
+                # STEP 2 - send "valid username" if username does not exist
                 else:
-                    connfd.sendall("Valid".encode())
-                    data = connfd.recv(1024)
-            
-                    # Decode data from bytes to string
-                    data_str = data.decode('utf-8')
+                    connfd.sendall("Valid username".encode())
+                    response = connfd.recv(1024).decode()
+                    # verify email
+                    # wait for password to be verified first
+                    if response == "Valid password":
+                        pin = backenddashboard.send_email_and_return_pin(username)
+                        connfd.sendall("Get PIN".encode())
+                        pin_to_verify = connfd.recv(1024).decode()
+                        email_verified = backenddashboard.verify_pin(pin_to_verify,pin)
+                        if email_verified: # email sent
+                            # start_time = datetime.datetime.now()
+                            # end_time = connfd.recv(1024).decode()
+                            # time_elapsed = end_time-start_time
+                            # print(start_time,end_time,time_elapsed)
+                            # if time_elapsed.total_seconds() < 10:
+                            #     connfd.sendall("Time up")
 
-                    # Parse JSON data
-                    auth_info = json.loads(data_str)
-
-                    # Extract username and password
-                    username = auth_info['username']
-                    password = auth_info['password']
+                            print("email verified")
+                            connfd.sendall("Valid PIN".encode())
+                            data = connfd.recv(1024)
                     
-                    backenddashboard.create_user(2, username, password)
-                    log_action(connfd, username, username, "User", "Create User", "Success")
+                            # Decode data from bytes to string
+                            data_str = data.decode('utf-8')
+
+                            # Parse JSON data
+                            auth_info = json.loads(data_str)
+
+                            # Extract username and password
+                            username = auth_info['username']
+                            password = auth_info['password']
+                            verified = auth_info['verified']
+                            
+                            backenddashboard.create_user(2, username, password, verified)
+                            log_action(connfd, username, username, "User", "Create User", "Success")
+
+                            # username is valid now prompt for password
+                            continue
+                        else:
+                            connfd.sendall("Invalid PIN")
+                # # create user 
+                # if backenddashboard.check_user_taken(username):
+                #     connfd.sendall("Username taken".encode())
+                #     continue
+                #     # send a message back to user that username is taken
+                # else:
+                #     connfd.sendall("Valid".encode())
+                #     data = connfd.recv(1024)
+            
+                #     # Decode data from bytes to string
+                #     data_str = data.decode('utf-8')
+
+                #     # Parse JSON data
+                #     auth_info = json.loads(data_str)
+
+                #     # Extract username and password
+                #     username = auth_info['username']
+                #     password = auth_info['password']
+                    
+                #     backenddashboard.create_user(2, username, password)
                     # username is valid now prompt for password
             else:
                 # login 
+                print("line 278 - attempting to login")
+                print(logged_in)
+                print(admin_logged_in)
                 if username in logged_in or username in admin_logged_in:
                     connfd.sendall("You are logged in already".encode('utf-8'))
                     print("You tried logging in again")

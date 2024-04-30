@@ -3,6 +3,10 @@ import hashlib
 import pandas as pd
 import secrets
 import csv
+from email.message import EmailMessage
+import smtplib
+import random
+import string
 
 
 class BackendDashboard():
@@ -25,7 +29,7 @@ class BackendDashboard():
         
         # check if record exists in userinfo.csv
         entry_exists = (userinfo_df['username'] == entered_username).any()
-
+        
         if entry_exists:
             print("entry exists")
             auth_level = self.get_auth_level(entered_username)
@@ -50,6 +54,7 @@ class BackendDashboard():
                 return ("Failed", str(auth_level))
         
         else:
+            print("user does not exist")
             return "User does not exist"
     
     def check_user_taken(self, username):
@@ -76,7 +81,7 @@ class BackendDashboard():
             writer = csv.writer(csvfile)
             writer.writerow(dict.values())
     
-    def create_user(self, role, username, password):
+    def create_user(self, role, username, password, verified):
         # salt password
         salt = self.gen_salt()
         salt_password = password + salt
@@ -104,11 +109,12 @@ class BackendDashboard():
                         "userID":str(current_new_userID), 
                         "role":role,
                         "password":hex_hash_salt_pw,
-                        "salt":salt,}
+                        "salt":salt,
+                        "verified":verified}
 
         self.add_csv_record("userinfo.csv", new_userinfo)
         # read csv and update user id tracker
-    
+        
     def entry_exists(self, username, input_df):
         return (input_df['username'] == username).any()
 
@@ -154,3 +160,51 @@ class BackendDashboard():
         # update csv with user removed
         self.df_to_csv("userinfo.csv", removed_user_df)
         return True
+    
+    def send_email_and_return_pin(self, email_to_verify):
+        pin = self.generate_pin()
+        self.send_ver_email(email_to_verify, pin)
+        return pin
+
+    
+    def get_pin(self):
+        while (True):
+            pin = easygui.passwordbox("Check your email and enter PIN:", 'Verify email')
+            if pin is None:
+                break
+            return pin
+
+    def verify_pin(self, pin_to_verify, pin):
+  
+        while (True):
+            if pin_to_verify is None:
+                break
+            if pin_to_verify == pin:
+                return True
+            else:
+                return False
+        return None
+
+    def generate_pin(self, length=6):
+        return ''.join(random.choices(string.digits, k=length))
+
+    def send_ver_email(self,recipient_email,pin):
+        sender_email = "securesnap7@gmail.com"
+        recipient_email = recipient_email
+        subject = 'SecureSnap: Verify your email'
+        sender_pw = "rajxmnmbhvfnempj"
+        pin = pin
+        body = ("PIN: " + str(pin))
+
+        email = EmailMessage()
+        email['From'] = sender_email
+        email['To'] = recipient_email
+        email['Subject'] = subject
+        email.set_content(body)
+
+        server = smtplib.SMTP('smtp.gmail.com',587)
+        server.starttls()
+        server.login(sender_email,sender_pw)
+
+        server.sendmail(sender_email,recipient_email,email.as_string())
+        print('mail sent')

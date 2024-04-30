@@ -73,15 +73,15 @@ def isSpecialChar(char):
 def isSpace(char):
     return char == ' '
 
-def valid_pw(password):
-    # password rules
-    pw_length = len(password) > 2
-    pw_num_count = sum(1 for c in password if c.isdigit()) > 0
-    pw_special_char_count = sum(1 for c in password if isSpecialChar(c)) > 0
-    pw_uppercase_count= sum(1 for c in password if c.isupper()) > 0
-    pw_space_count = sum(1 for c in password if isSpace(c)) < 1
+# def valid_pw(password):
+#     # password rules
+#     pw_length = len(password) > 2
+#     pw_num_count = sum(1 for c in password if c.isdigit()) > 0
+#     pw_special_char_count = sum(1 for c in password if isSpecialChar(c)) > 0
+#     pw_uppercase_count= sum(1 for c in password if c.isupper()) > 0
+#     pw_space_count = sum(1 for c in password if isSpace(c)) < 1
     
-    return pw_length and pw_num_count and pw_special_char_count and pw_uppercase_count and pw_space_count
+#     return pw_length and pw_num_count and pw_special_char_count and pw_uppercase_count and pw_space_count
 
 def gen_salt():
     # returns hex string
@@ -173,34 +173,71 @@ class FrontendDashboard:
                 self.reset_self_password(username)
             if action == "Quit":
                 return "end"
-
-    def login(self): # return password and username
-        actions = ["Login","Create User"]
-
+            
+    def landing_page(self): # return password and username
+        actions = ["Login","Create User",'quit']
+        action = easygui.buttonbox("Choose an action:", choices = actions)
+        if action == 'quit':
+            quit()
+        else:
+            return action
+    
+    def login(self):
         while True:
-            action = easygui.buttonbox("Choose an action:", choices = actions)
-            if action == "Login":
-                while True:
-                    entered_username = easygui.enterbox("Enter username: ", title="Login")
-                    if entered_username is None:
-                        break
-                    entered_password = easygui.passwordbox("Enter password", title = "Login")
-                    if entered_password is None:
-                        break
+            entered_username = easygui.enterbox("Enter username: ", title="Login")
+            if entered_username is None:
+                break
+            entered_password = easygui.passwordbox("Enter password", title = "Login")
+            if entered_password is None:
+                break
+            
+            return entered_username, entered_password
+        
+    def get_pin(self):
+        while (True):
+            pin = easygui.passwordbox("Check your email and enter PIN:", 'Verify email')
+            if pin is None:
+                break
+            return pin
+        
+    def create_user(self):
+        while True:
+            username = easygui.enterbox("Enter username:", "Create User")
+            if username is None: # pressed cancel
+                break
+            elif len(username.strip()) == 0:
+                self.display_message("Username not valid.")
+                continue
+            password = easygui.passwordbox("Enter password", title = "Login")
+            return username, password
+
+    # def login(self): # return password and username
+    #     actions = ["Login","Create User", "Quit"]
+
+    #     while True:
+    #         action = easygui.buttonbox("Choose an action:", choices = actions)
+    #         if action == "Login":
+    #             while True:
+    #                 entered_username = easygui.enterbox("Enter username: ", title="Login")
+    #                 if entered_username is None:
+    #                     break
+    #                 entered_password = easygui.passwordbox("Enter password", title = "Login")
+    #                 if entered_password is None:
+    #                     break
                     
-                    return entered_username, entered_password
+    #                 return entered_username, entered_password
 
 
-            if action == "Create User":
-                while True:
-                    username = easygui.enterbox("Enter username:", "Create User")
-                    if username is None: # pressed cancel
-                        break
-                    elif len(username.strip()) == 0:
-                        self.display_message("Username not valid.")
-                        continue
-                    else:
-                        return username, action
+    #         if action == "Create User":
+    #             while True:
+    #                 username = easygui.enterbox("Enter username:", "Create User")
+    #                 if username is None: # pressed cancel
+    #                     break
+    #                 elif len(username.strip()) == 0:
+    #                     self.display_message("Username not valid.")
+    #                     continue
+    #                 else:
+    #                     return username, action
             
         
     def select_user(self, logged_in, username):
@@ -234,27 +271,38 @@ class FrontendDashboard:
             if password is None:
                 break
             # check if password meets requirements
-            if valid_pw(password):
+            if self.valid_pw(password):
                 return password
             else:
                 easygui.msgbox("Invalid password", f'Create {role}')
                 continue
         return None
 
-    def reset_self_password(self, user):
-        userinfo_df = read_csv_as_df()
-        print(userinfo_df)
-        while(True):
-            password = easygui.passwordbox("Enter new password:", "Reset password")
-            if password is None:
-                return None
-            # check if password meets requirements
-            if valid_pw(password):
-                # update self
-                self.update_pw(user, password)
-                break
-            else:
-                easygui.msgbox("Invalid password", "Reset password")
+    # def reset_self_password(self, user):
+    #     userinfo_df = read_csv_as_df()
+    #     print(userinfo_df)
+    #     while(True):
+    #         password = easygui.passwordbox("Enter new password:", "Reset password")
+    #         if password is None:
+    #             return None
+    #         # check if password meets requirements
+    #         if valid_pw(password):
+    #             # update self
+    #             self.update_pw(user, password)
+    #             break
+    #         else:
+    #             easygui.msgbox("Invalid password", "Reset password")
+    
+    def valid_pw(self, password):
+    # password rules
+        pw_length = len(password) > 2
+        pw_num_count = sum(1 for c in password if c.isdigit()) > 0
+        pw_special_char_count = sum(1 for c in password if isSpecialChar(c)) > 0
+        pw_uppercase_count= sum(1 for c in password if c.isupper()) > 0
+        pw_space_count = sum(1 for c in password if isSpace(c)) < 1
+        
+        return pw_length and pw_num_count and pw_special_char_count and pw_uppercase_count and pw_space_count
+
 
     # def reset_user_password(self, user):
     #     userinfo_df = read_csv_as_df()
