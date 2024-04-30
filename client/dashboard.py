@@ -1,9 +1,10 @@
 
-import sys
 import socket
 import hashlib
 import easygui
 import select
+import os
+import imghdr
 # from frontenddashboard2 import FrontendDashboard
 
 
@@ -11,10 +12,44 @@ class Dashboard:
     def __init__(self, client_socket):
         self.client_socket = client_socket        
         
-    def select_photo(self, recipient):
-        #print("I reach select photo")
+    def select_photo(self):
+        def format_size(size_in_bytes):
+            # Convert bytes to megabytes
+            size_in_mb = size_in_bytes / (1024 * 1024)
+            if size_in_mb < 1024:
+                return f"{size_in_mb:.2f} MB"
+            else:
+                # Convert megabytes to gigabytes
+                size_in_gb = size_in_mb / 1024
+                return f"{size_in_gb:.2f} GB"
+            
+        while True:
+            file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
 
-        file_path = easygui.fileopenbox(msg="Select a file to send", title="Select File")
+            if file_path:
+                # Check the file format using imghdr
+                file_format = imghdr.what(file_path)
+                if file_format not in ['png', 'jpeg', 'jpg']:
+                    easygui.msgbox("Selected file is not a PNG, JPEG or JPG.")
+                    continue
+
+                # Check file size
+                file_size = os.path.getsize(file_path)
+                max_size = 2.5 * 1024 * 1024  # 2.5 MB limit
+                if file_size > max_size:
+                    formatted_file_size = format_size(file_size)
+                    easygui.msgbox(f"File is too large ({formatted_file_size} bytes). Maximum allowed size is 2.5 MB.")
+                    continue
+
+                return file_path
+            else:
+                print("No file selected.")
+                return None
+
+       
+
+    def send_photo(self, file_path, recipient):
+        #print("I reach select photo")
 
 
         if file_path:

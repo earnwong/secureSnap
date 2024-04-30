@@ -15,6 +15,8 @@ import easygui
 import tkinter as tk
 from tkinter import ttk
 import struct
+from queue import Queue
+
 
 
 frontend_dashboard = FrontendDashboard()
@@ -47,10 +49,27 @@ def connect_to_server(host, port):
         print(f"Failed to connect: {e}")
         
 
-def receive_photos_continuously(server_socket, username):
+def receive_photos_continuously(server_socket, username, queue):
     d = Dashboard(server_socket)
+
     while True:
         time.sleep(10)
+        accept_deny = server_socket.recv(1024)
+        #print("Accept_deny:", accept_deny)
+        if accept_deny is not None:
+            print("accept/deny:", username)
+            queue.put("accept")
+            print(queue.get())
+            #frontend_dashboard.display_message(f"{accept_deny} is trying to send an image")
+            #decision = easygui.enterbox(f"Would you like to accept or deny an image from {accept_deny}")
+            #print(decision)
+        #if accept_deny:
+            #frontend_dashboard.display_message(f"{accept_deny} is trying to send an image")
+            #decision = easygui.enterbox("Would you like to accept or deny")
+            #if decision == "deny":
+                #break
+            #elif decision == "accept":
+                #continue
         event_set = pause_event.is_set()
         while event_set:
             event_set = pause_event.is_set()
@@ -63,12 +82,18 @@ def receive_photos_continuously(server_socket, username):
             break
         
         
-def user_handler(server_socket, username, d): 
+def user_handler(server_socket, username, d, queue): 
     while True:
         action = frontend_dashboard.user_menu(username)
 
+        if not (queue.empty()):
+            print("queue:", queue.get())
+            frontend_dashboard.display_message("hi")
 
         print("Action:", action)
+
+        # if queue:
+        #     frontend_dashboard.display_message("Accept?")
 
 
         if action == "send":
@@ -100,9 +125,23 @@ def user_handler(server_socket, username, d):
                     response = server_socket.recv(22).decode('utf-8')
                 
                     if response == "This user is available":
+                        # accept_deny = server_socket.recv(1024).decode('utf-8')
+                        # if accept_deny:
+                        #     frontend_dashboard.display_message(f"{accept_deny} is trying to send an image")
+                        #     decision = easygui.enterbox("Would you like to accept or deny")
+                        #     if decision == 
+                            
                         frontend_dashboard.display_message("This user is available")
+                
+                        file_path = d.select_photo()
+                        d.send_photo(file_path, recipient)
+
+                        # sends a prompt back to server ƒfor accept + deny
                         
-                        d.select_photo(recipient)
+                        # if rec == accept:
+                        #     d.send_photo(recipient, file_path) 
+                        # else:
+                        #     continue/break
                     
                     elif response == "Blocked":
                         frontend_dashboard.display_message("This user is not available")
@@ -280,6 +319,8 @@ def main():
     host = sys.argv[1]
     port = sys.argv[2]
 
+    
+
     while True:
         # Connect to the server
         server_socket = connect_to_server(host, int(port))
@@ -438,12 +479,13 @@ def main():
                 
     if role == "2":
         d = Dashboard(server_socket)
+        queue = Queue()
     
-        photo_thread = threading.Thread(target=receive_photos_continuously, args=(server_socket, username))
+        photo_thread = threading.Thread(target=receive_photos_continuously, args=(server_socket, username, queue))
         photo_thread.start()
         
         try:
-            user_handler(server_socket, username, d)
+            user_handler(server_socket, username, d, queue)
         except Exception as e:
             print(f"An error occurred: {e}")
         finally:

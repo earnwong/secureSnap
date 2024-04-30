@@ -16,6 +16,7 @@ clients = {}  # store the connfd
 logged_in = {} # Keeps track of the users who logged in
 admin_logged_in = {} # admin/superadmin log in tracker
 blocked_users = {}
+alerts = {} # stores failed attempts
 
 
 
@@ -23,6 +24,8 @@ blocked_users = {}
 log_file = open("server.log", "a")
 
 def log_action(connfd, username, action_user, role, action, status):
+    # if action == "Log in":
+
     IP_address = connfd.getpeername()
 
     # Get the current date and time
@@ -90,6 +93,7 @@ def user_handler(connfd, username):
                     if username not in blocked_users[recipient]:
                         print('not blocked')
                         connfd.sendall("This user is available".encode('utf-8'))
+                        clients[recipient].sendall(f"{username}".encode('utf-8'))
                     else:
                         print('blocked')
                         connfd.sendall("Blocked".encode('utf-8'))
@@ -114,14 +118,9 @@ def user_handler(connfd, username):
             elif (user != None) and action == "block": 
                 user_to_block = connfd.recv(1024).decode()
                 user_to_block = str(user_to_block)
-                #print(user_to_block)
                 status = backenddashboard.check_blocked_user(user, user_to_block)
-                #print("status:", status)
-                #print(blocked_users)
                 if status == 1:
                     blocked_users[user].extend([user_to_block])
-                #print(blocked_users)
-                #status_proper_encoding = struct.pack("!i", status)
                 connfd.sendall(str(status).encode())
                 continue
 
