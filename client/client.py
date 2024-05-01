@@ -116,6 +116,9 @@ def user_handler(server_socket, username, d):
                         frontend_dashboard.display_message("This user is not available")
                     else:
                         print(response)
+                else:
+                    continue
+                
             finally:
                 pause_event.clear()
 
