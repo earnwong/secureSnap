@@ -5,15 +5,37 @@ import easygui
 import select
 import os
 import imghdr
-# from frontenddashboard2 import FrontendDashboard
 
 
 class Dashboard: 
     def __init__(self, client_socket):
+        """
+        Initialize the Dashboard with a client socket.
+
+        Args:
+            client_socket (socket.socket): The socket object used to communicate with the server.
+        """
         self.client_socket = client_socket        
         
     def select_photo(self):
+        """
+        Guides the user through selecting a photo file that meets specific criteria
+        (such as file type and size). Provides a graphical file selector and feedback on constraints.
+
+        Returns:
+            str or None: The path to the selected file that meets the criteria, or None if no file is selected.
+        """
+        
         def format_size(size_in_bytes):
+            """
+            Converts a size from bytes to a human-readable format in megabytes or gigabytes.
+
+            Args:
+                size_in_bytes (int): Size in bytes to be converted.
+
+            Returns:
+                str: Human-readable string representing the size in MB or GB.
+            """
             # Convert bytes to megabytes
             size_in_mb = size_in_bytes / (1024 * 1024)
             if size_in_mb < 1024:
@@ -49,12 +71,19 @@ class Dashboard:
        
 
     def send_photo(self, file_path, recipient):
-        #print("I reach select photo")
+        """
+        Sends a photo to a recipient over the established socket connection.
 
+        Args:
+            file_path (str): Path to the file that needs to be sent.
+            recipient (str): The identifier of the recipient.
+
+        Returns:
+            None
+        """
 
         if file_path:
-            #print("I end up going here")
-            #print(file_path)
+            
             with open(file_path, 'rb') as file:
                 while True:
                     chunk = file.read(1024)  # Read the file in chunks of 1024 bytes
@@ -71,6 +100,17 @@ class Dashboard:
 
     
     def receive_photo1(self, server_socket, username):
+        """
+        Receives a photo file from the server and saves it with a filename based on the username.
+
+        Args:
+            server_socket (socket.socket): The server socket over which the file is received.
+            username (str): Username to use in naming the received file.
+
+        Returns:
+            bool: True if the file is received and saved successfully, False if there's no file to receive.
+        """
+        
         sockets_to_read = [server_socket]
 
         # List of sockets to monitor for write readiness (if needed)
@@ -85,7 +125,6 @@ class Dashboard:
         # Use select to check for read readiness
         readable, writable, exceptional = select.select(sockets_to_read, sockets_to_write, sockets_with_errors, timeout)
         if not readable:
-            print("no files to receive")
             return False
         else:
             print("there is a file to be received")

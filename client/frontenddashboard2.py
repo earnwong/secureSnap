@@ -118,7 +118,7 @@ class FrontendDashboard:
         
     # superadmin menu
     def superadmin_menu(self, username):
-        actions = ["Create Admin", "Create User", "Delete Admin/User", "Reset Admin/User password", "View Logs", "Quit"]
+        actions = ["Create Admin", "Create User", "Delete Admin/User", "View Logs", "Quit"]
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions, title=f'Welcome (0) Superadmin:{username}!')
             if action == "Create Admin":
@@ -127,10 +127,6 @@ class FrontendDashboard:
                 return action
             if action == "Delete Admin/User":
                 return "Delete"
-                # self.delete_user(username) # cant handle non existent ones
-            if action == "Reset Admin/User password":
-                return "Reset"
-                # self.reset_user_password(username)
             if action == "View Logs":
                 return "Logs"
             if action == "Quit":
@@ -138,7 +134,7 @@ class FrontendDashboard:
 
     # admin menu
     def admin_menu(self, username):
-        actions = ["Create Admin","Create User", "Delete User", "Reset User password", "View Logs", "Quit"]
+        actions = ["Create Admin","Create User", "Delete User", "View Logs", "Quit"]
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions, title=f'Welcome (1) Admin: {username}!')
             if action == "Create Admin":
@@ -150,8 +146,6 @@ class FrontendDashboard:
             if action == "Delete User":
                 return "Delete"
                 # self.delete_user(username)
-            if action == "Reset User password":
-                return "Reset"
             if action == "View Logs":
                 return "Logs"
                 # self.reset_user_password(username)
@@ -159,7 +153,7 @@ class FrontendDashboard:
                 return "end"
 
     def user_menu(self, username):
-        actions = ["Send Photo", "Block Users", "Delete your account", "Reset password", "Quit"]
+        actions = ["Send Photo", "Block Users", "Delete your account", "Quit"]
         # user menu
         while True:
             action = easygui.buttonbox("Choose an action:", choices = actions, title=f'Welcome (2) User: {username}!')
@@ -169,16 +163,14 @@ class FrontendDashboard:
                 return "block"
             if action == "Delete your account":
                 return "Delete"
-            if action == "Reset password":
-                self.reset_self_password(username)
             if action == "Quit":
                 return "end"
             
     def landing_page(self): # return password and username
-        actions = ["Login","Create User", "Forgot password", 'quit']
+        actions = ["Login","Create User", "Forgot password", 'Quit']
         action = easygui.buttonbox("Choose an action:", choices = actions)
-        if action == 'quit':
-            quit()
+        if action == 'Quit':
+            return "end"
         else:
             return action
         
@@ -189,16 +181,22 @@ class FrontendDashboard:
                 break
             return entered_username
 
-    def login(self):
+    def username_login(self):
         while True:
             entered_username = easygui.enterbox("Enter username: ", title="Login")
             if entered_username is None:
                 break
+            
+            return entered_username
+        
+    def password_login(self):
+        while True:
             entered_password = easygui.passwordbox("Enter password", title = "Login")
             if entered_password is None:
                 break
             
-            return entered_username, entered_password
+            return entered_password
+        
         
     def get_pin(self):
         while (True):
@@ -211,40 +209,12 @@ class FrontendDashboard:
         while True:
             username = easygui.enterbox("Enter username:", "Create User")
             if username is None: # pressed cancel
-                break
+                return None, None
             elif len(username.strip()) == 0:
                 self.display_message("Username not valid.")
                 continue
-            password = easygui.passwordbox("Enter password", title = "Login")
+            password = easygui.passwordbox("Enter password", title = "Create User")
             return username, password
-
-    # def login(self): # return password and username
-    #     actions = ["Login","Create User", "Quit"]
-
-    #     while True:
-    #         action = easygui.buttonbox("Choose an action:", choices = actions)
-    #         if action == "Login":
-    #             while True:
-    #                 entered_username = easygui.enterbox("Enter username: ", title="Login")
-    #                 if entered_username is None:
-    #                     break
-    #                 entered_password = easygui.passwordbox("Enter password", title = "Login")
-    #                 if entered_password is None:
-    #                     break
-                    
-    #                 return entered_username, entered_password
-
-
-    #         if action == "Create User":
-    #             while True:
-    #                 username = easygui.enterbox("Enter username:", "Create User")
-    #                 if username is None: # pressed cancel
-    #                     break
-    #                 elif len(username.strip()) == 0:
-    #                     self.display_message("Username not valid.")
-    #                     continue
-    #                 else:
-    #                     return username, action
             
         
     def select_user(self, logged_in, username):

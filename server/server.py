@@ -11,6 +11,7 @@ import ssl
 import datetime
 from backenddashboard import BackendDashboard
 import struct
+import time
 
 clients = {}  # store the connfd
 logged_in = {} # Keeps track of the users who logged in
@@ -19,9 +20,11 @@ blocked_users = {}
 alerts = {} # stores failed attempts
 
 
-
 # Initialize logging
 log_file = open("server.log", "a")
+
+# Initialize logging for alert-specific entries
+alert_log_file = open("alerts.log", "a")
 
 def log_action(connfd, username, action_user, role, action, status):
     # if action == "Log in":
@@ -39,6 +42,30 @@ def log_action(connfd, username, action_user, role, action, status):
     log_entry = "Time: " + formatted_timestamp + ", IP address: " + str(IP_address[0])+ ", Username: " + username + ", Status: " + status + ", Action: " + action + ", Done By: " + action_user + ", Role: " + role + "\n"
     log_file.write(log_entry)
     log_file.flush()  # Flush the buffer to ensure the log entry is written immediately
+    
+    # Check if the action is a login attempt and it failed
+    if action == "Log In" and status == "Failed":
+        key = (username, str(IP_address[0]))
+        if key not in alerts:
+            alerts[key] = {'count': 1, 'first_attempt_time': current_datetime}
+        else:
+            alerts[key]['count'] += 1
+
+        
+        # Check if there are three failed attempts within 5 minutes
+        if alerts[key]['count'] == 3:
+            time_difference = (current_datetime - alerts[key]['first_attempt_time']).total_seconds()
+            print(time_difference)
+            if time_difference <= 300:  # 300 seconds is 5 minutes
+                # Log the alert to the alert log file
+                alert_message = f"ALERT: {formatted_timestamp} : Three failed login attempts for user {username} from IP {IP_address} within 5 minutes.\n"
+                alert_log_file.write(alert_message)
+                alert_log_file.flush()
+                print(alert_message)
+
+            # Reset the count after logging the alert or if the attempts are spread over more than 5 minutes
+            alerts[key] = {'count': 0, 'first_attempt_time': current_datetime}
+
 
 # session_manager = SessionManager()
 #generate = Generate()
@@ -47,26 +74,18 @@ backenddashboard = BackendDashboard()
 def user_handler(connfd, username):
     try:
         while True:
-            # action = connfd.recv(1024).decode()
             
             data = connfd.recv(1024)
-            #print("data:", data)
-            #print("connfd:", connfd.recv(1024))
-            #print("connfd1:", connfd.recv(1024))
-            # Decode data from bytes to string
+
             data_str = data.decode('utf-8')
-            #print('data_str:', data_str)
-            # Parse JSON data
-            #print("i can come here")
+
             auth_info = json.loads(data_str)
             print("auth_info:", auth_info)
 
             # Extract username and password
             user = auth_info['username']
             action = auth_info['password']
-            print("user", user)
-            print("action", action)
-            #print(logged_in)
+ 
             if user == None and action == "END_SESSION":
                 print("Session ended by the client.")
                 break
@@ -86,16 +105,14 @@ def user_handler(connfd, username):
                 recipient = user
                 #print("I AM HERE")
                 if logged_in[recipient] == 'yes':
-                    #connfd.sendall("This user is available".encode('utf-8'))
-                    #print(blocked_users)
-                    #print(blocked_users[recipient])
-                    #print(username)
+                    
                     if username not in blocked_users[recipient]:
                         print('not blocked')
                         connfd.sendall("This user is available".encode('utf-8'))
                     else:
                         print('blocked')
                         connfd.sendall("Blocked".encode('utf-8'))
+                        continue
                     
                     while True:
                         data = connfd.recv(1024) 
@@ -128,8 +145,7 @@ def user_handler(connfd, username):
                     log_action(connfd, user, user, "User", "Delete Account", "Success")
                     connfd.sendall("User Removed".encode())
                     break
-            # elif action == "end":
-            #     print('here')
+
                 
                 
     except json.JSONDecodeError:
@@ -173,6 +189,37 @@ def create_user_helper(connfd, username):
         
         return (username, password)
 
+def verify_pin_helper(connfd, email):
+    # generate pin and send
+    pin = backenddashboard.send_email_and_return_pin(email)
+    # verify pin
+    connfd.sendall("Get PIN".encode())
+    while True:  
+
+        pin_to_verify = connfd.recv(1024).decode() 
+        
+        pin_verified = backenddashboard.verify_pin(pin_to_verify,pin)
+
+        if pin_verified:
+            # request new pw
+            connfd.sendall("Get new password".encode())
+            
+            new_password = connfd.recv(1024).decode()
+
+            role = backenddashboard.get_auth_level(email)
+            backenddashboard.update_pw(email, new_password, role)
+            
+            str_role = backenddashboard.get_auth_level_str(role)
+            
+            log_action(connfd, email, email, str_role, "Reset Password", "Success")
+            connfd.sendall("Password updated".encode())
+            return True
+        
+        else:
+            connfd.sendall("PIN not verified".encode())
+            return False
+
+
 def client_handler(connfd):
     try:
         while True:
@@ -202,18 +249,17 @@ def client_handler(connfd):
             username = auth_info['username']
             password = auth_info['password']
             action = auth_info['action']
-            print(username, password, action)
             
             if action == "Create User":
                 print("server line 147")
                 if backenddashboard.check_user_taken(username):
                     connfd.sendall("Username taken".encode())
                     continue
-                    # send a message back to user that username is taken
-                # STEP 2 - send "valid username" if username does not exist
+                    
                 else:
                     connfd.sendall("Valid username".encode())
                     response = connfd.recv(1024).decode()
+                    
                     # verify email
                     # wait for password to be verified first
                     if response == "Valid password":
@@ -222,14 +268,7 @@ def client_handler(connfd):
                         pin_to_verify = connfd.recv(1024).decode()
                         email_verified = backenddashboard.verify_pin(pin_to_verify,pin)
                         if email_verified: # email sent
-                            # start_time = datetime.datetime.now()
-                            # end_time = connfd.recv(1024).decode()
-                            # time_elapsed = end_time-start_time
-                            # print(start_time,end_time,time_elapsed)
-                            # if time_elapsed.total_seconds() < 10:
-                            #     connfd.sendall("Time up")
 
-                            print("email verified")
                             connfd.sendall("Valid PIN".encode())
                             data = connfd.recv(1024)
                     
@@ -253,11 +292,8 @@ def client_handler(connfd):
                             connfd.sendall("Invalid PIN")
             
             elif action == "Forgot password":
-                print("inside server forgot password")
-
                 email_to_check = username
                 user_exists = backenddashboard.user_exists(email_to_check)
-                print(user_exists)
                 if user_exists:
                     # generate pin and send
                     pin = backenddashboard.send_email_and_return_pin(email_to_check)
@@ -277,8 +313,10 @@ def client_handler(connfd):
                             role = backenddashboard.get_auth_level(email_to_check)
                             backenddashboard.update_pw(email_to_check, new_password, role)
                             
+                            str_role = backenddashboard.get_auth_level_str(role)
+                            
+                            log_action(connfd, email_to_check, email_to_check, str_role, "Reset Password", "Success")
                             connfd.sendall("Password updated".encode())
-
                             break
 
                         else:
@@ -292,225 +330,231 @@ def client_handler(connfd):
 
 
             elif action == "Login":
-                # login 
-                print("line 278 - attempting to login")
-                print(logged_in)
-                print(admin_logged_in)
-                if username in logged_in or username in admin_logged_in:
-                    connfd.sendall("You are logged in already".encode('utf-8'))
-                    print("You tried logging in again")
-                    continue
+                if password == None:
+                    if backenddashboard.check_verify(username) and not (username in logged_in or username in admin_logged_in):
+                        connfd.sendall("Verified".encode('utf-8'))
+                        continue
+                    elif not (backenddashboard.check_verify(username)):
+                        connfd.sendall("Not verified".encode('utf-8'))
+                        if verify_pin_helper(connfd, username):
+                            continue
+                        
+                    elif username in logged_in or username in admin_logged_in:
+                        connfd.sendall("You are logged in already".encode('utf-8'))
+                        print("You tried logging in again")
+                        continue
+                    else:
+                        connfd.sendall("auth".encode('utf-8'))
+                        
                 else:
-                    connfd.sendall("auth".encode('utf-8'))
-                
-                # authentication check
-                auth = backenddashboard.auth_login(username, password)
-                print(auth)
-                
-                if auth == "0":
-                    print(f"Superadmin {username} authenticated successfully.")
-                    clients[username] = connfd
-                    admin_logged_in[username] = 'yes'
-                    log_action(connfd, username, username, "Superadmin", "Log In", "Success")
-                    print(f"{username} logged in.")
+
+                    # authentication check
+                    auth = backenddashboard.auth_login(username, password)
                     
-                    connfd.sendall(str(auth).encode())
-                    client_username = username
-                    
-                    try:
-
-                        while True:
-                            data = connfd.recv(1024)
-            
-                            # Decode data from bytes to string
-                            data_str = data.decode('utf-8')
-
-                            # Parse JSON data
-                            auth_info = json.loads(data_str)
-
-                            # Extract username and password
-                            # this is the username they want to create or delete
-                            username = auth_info['username']
-                            action = auth_info['password']
-                            
-                            if action == "Create User":
-                                username, password = create_user_helper(connfd, username)
-                                if username:
-                                    backenddashboard.create_user(2, username, password, False)
-                                    log_action(connfd, username, client_username, "Superadmin", "Create User", "Success")
-                                else:
-                                    continue
-                                
-                            elif action == "Create Admin":
-                                username, password = create_user_helper(connfd, username)
-                                if username:
-                                    backenddashboard.create_user(1, username, password, False)
-                                    log_action(connfd, username, client_username, "Superadmin", "Create Admin", "Success")
-                                else:
-                                    continue
-
-                            elif action == "Delete":
-                                target_user = auth_info['target_user']
-                                status = backenddashboard.delete_user(username, target_user)
-                                if status == 0:
-                                    connfd.sendall("Denied".encode())
-                                    log_action(connfd, target_user, client_username, "Superadmin", "Delete Account", "Failed")
-
-                                elif status == 1:
-                                    connfd.sendall("Success".encode())
-                                    log_action(connfd, target_user, client_username, "Superadmin", "Delete Account", "Success")
-
-                                    # if (target_user in logged_in) or (target_user in admin_logged_in):
-                                    #     if target_user in clients:
-                                    #         clients[target_user].sendall()
-                                    #     break
-                                elif status == 2:
-                                    connfd.sendall("User not found".encode())
-                                    log_action(connfd, target_user, client_username, "Superadmin", "Delete Account", "Failed")
-                            
-                            elif action == "Logs":
-                                with open('server.log', 'rb') as log_file:
-                                    while True:
-                                        data = log_file.read(1024)  # Read in chunks of 1KB
-                                        if not data:
-                                            break  # If no more data, stop the loop
-                                        connfd.sendall(data)
-                                    connfd.sendall(b"END_OF_FILE")
-
-                            elif action == "END_SESSION_SUPER_ADMIN":
-                                    break
-                    
-                    except Exception as e:
-                        print(f"An error occurred: {e}")
-                                 
-                    finally:
-                        print(f'{username} logged out')
+                    if auth == "0":
+                        print(f"Superadmin {username} authenticated successfully.")
+                        clients[username] = connfd
+                        admin_logged_in[username] = 'yes'
+                        log_action(connfd, username, username, "Superadmin", "Log In", "Success")
+                        print(f"{username} logged in.")
+                        
+                        connfd.sendall(str(auth).encode())
+                        client_username = username
+                        
                         try:
-                            log_action(connfd, username, username, "Superadmin", "Log Out", "Success")
-                            connfd.close()
-                            del clients[username]
-                            del admin_logged_in[username]
-                            print("SSL socket closed successfully")
-                            break
-                        except Exception as e:
-                            print("Error closing SSL socket:", e)
-                            import traceback
-                            traceback.print_exc()
-                    
-                  
-                elif auth == "1":
-                    print(f"admin {username} authenticated successfully.")
-                    clients[username] = connfd
-                    admin_logged_in[username] = 'yes'
-                    log_action(connfd, username, username, "Admin", "Log In", "Success")
-                    print(f"{username} logged in.")
-                    
-                    connfd.sendall(str(auth).encode()) 
-                    admin_username = username
-                    
-                    try:
-                        while True:
-                            data = connfd.recv(1024)
-            
-                            # Decode data from bytes to string
-                            data_str = data.decode('utf-8')
 
-                            # Parse JSON data
-                            auth_info = json.loads(data_str)
+                            while True:
+                                data = connfd.recv(1024)
+                
+                                # Decode data from bytes to string
+                                data_str = data.decode('utf-8')
 
-                            # Extract username and password
-                            username = auth_info['username']
-                            action = auth_info['password']
-                            
-                            if action == "Create User":
-                                username, password = create_user_helper(connfd, username)
-                                if username is not None:
-                                    backenddashboard.create_user(2, username, password, False)
-                                    log_action(connfd, username, admin_username, "Admin", "Create User", "Success")
-                                else:
-                                    continue
+                                # Parse JSON data
+                                auth_info = json.loads(data_str)
+
+                                # Extract username and password
+                                # this is the username they want to create or delete
+                                username = auth_info['username']
+                                action = auth_info['password']
                                 
-                            elif action == "Create Admin":
-                                username, password = create_user_helper(connfd, username)
-                                if username:
-                                    backenddashboard.create_user(1, username, password, False)
-                                    log_action(connfd, username, admin_username, "Admin", "Create Admin", "Success")
-                                else:
-                                    continue
-
-                            elif action == "Delete":
-                                target_user = auth_info['target_user']
-                                status = backenddashboard.delete_user(username, target_user)
-                                print(status)
-                                if status == 0:
-                                    log_action(connfd, target_user, admin_username, "Admin", "Delete Account", "Failed")
-                                    connfd.sendall("Denied".encode())
-                                elif status == 1:
-                                    log_action(connfd, target_user, admin_username, "Admin", "Delete Account", "Success")
-                                    connfd.sendall("Success".encode())
-                                    # if they are logged in they are logged out
-                                elif status == 2:
-                                    log_action(connfd, target_user, admin_username, "Admin", "Delete Account", "Failed")
-                                    connfd.sendall("User not found".encode())
-                            
-                            elif action == "Logs":
-                                with open('server.log', 'rb') as log_file:
-                                    while True:
-                                        data = log_file.read(1024) 
-                                        if not data:
-                                            break  # If no more data, stop the loop
-                                        connfd.sendall(data)
-                                    connfd.sendall(b"END_OF_FILE")
+                                if action == "Create User":
+                                    username, password = create_user_helper(connfd, username)
+                                    print(username, password)
+                                    if username:
+                                        backenddashboard.create_user(2, username, password, False)
+                                        log_action(connfd, username, client_username, "Superadmin", "Create User", "Success")
+                                    else:
+                                        continue
                                     
-                            elif action == "END_SESSION_ADMIN":
-                                break
+                                elif action == "Create Admin":
+                                    username, password = create_user_helper(connfd, username)
+                                    print(username, password)
+                                    if username:
+                                        backenddashboard.create_user(1, username, password, False)
+                                        log_action(connfd, username, client_username, "Superadmin", "Create Admin", "Success")
+                                    else:
+                                        continue
+
+                                elif action == "Delete":
+                                    target_user = auth_info['target_user']
+                                    status = backenddashboard.delete_user(username, target_user)
+                                    if status == 0:
+                                        connfd.sendall("Denied".encode())
+                                        log_action(connfd, target_user, client_username, "Superadmin", "Delete Account", "Failed")
+
+                                    elif status == 1:
+                                        connfd.sendall("Success".encode())
+                                        log_action(connfd, target_user, client_username, "Superadmin", "Delete Account", "Success")
+
+                                       
+                                    elif status == 2:
+                                        connfd.sendall("User not found".encode())
+                                        log_action(connfd, target_user, client_username, "Superadmin", "Delete Account", "Failed")
                                 
-                    except Exception as e:
-                        print(f"An error occurred: {e}")
-                                 
-                    finally:
-                        print(f'{username} logged out')
-                        try:
-                            log_action(connfd, username, username, "Admin", "Log Out", "Success")
-                            connfd.close()
-                            del clients[username]
-                            del admin_logged_in[username]
-                            print("SSL socket closed successfully")
-                            break
+                                elif action == "Logs":
+                                    with open('server.log', 'rb') as log_file:
+                                        while True:
+                                            data = log_file.read(1024)  # Read in chunks of 1KB
+                                            if not data:
+                                                break  # If no more data, stop the loop
+                                            connfd.sendall(data)
+                                        connfd.sendall(b"END_OF_FILE")
+
+                                elif action == "END_SESSION_SUPER_ADMIN":
+                                        break
+                        
                         except Exception as e:
-                            print("Error closing SSL socket:", e)
-                            import traceback
-                            traceback.print_exc()
+                            print(f"An error occurred: {e}")
+                                    
+                        finally:
+                            print(f'{username} logged out')
+                            try:
+                                log_action(connfd, username, username, "Superadmin", "Log Out", "Success")
+                                connfd.close()
+                                del clients[username]
+                                del admin_logged_in[username]
+                                print("SSL socket closed successfully")
+                                break
+                            except Exception as e:
+                                print("Error closing SSL socket:", e)
+                                import traceback
+                                traceback.print_exc()
+                        
                     
-                    
-                elif auth == "2":
-                    print(f"{username} authenticated successfully.")
-                    connfd.sendall(str(auth).encode()) 
-                    clients[username] = connfd
-                    logged_in[username] = 'yes'
-                    blocked_users[username] = []
-                    print(f"{username} logged in.")
-                    log_action(connfd, username, username, "User", "Log In", "Success")
-                    user_handler(connfd, username)
-                    break
-                    
-                elif auth == "User does not exist":
-                    connfd.sendall(str(auth).encode())
-                    break
-                    
-                else:
-                    failed_role = auth[1]
-                    if failed_role == "0":
-                        failed_role = "Superadmin"
-                    elif failed_role == "1":
-                        failed_role = "Admin"
-                    elif failed_role == "2":
-                        failed_role = "User"
-                    print(f"Authentication failed for user {username}.")
-                    log_action(connfd, username, username, failed_role, "Log In", "Failed")
-                    connfd.sendall("Login failed.".encode())
-                    break
-            
+                    elif auth == "1":
+                        print(f"admin {username} authenticated successfully.")
+                        clients[username] = connfd
+                        admin_logged_in[username] = 'yes'
+                        log_action(connfd, username, username, "Admin", "Log In", "Success")
+                        print(f"{username} logged in.")
+                        
+                        connfd.sendall(str(auth).encode()) 
+                        admin_username = username
+                        
+                        try:
+                            while True:
+                                data = connfd.recv(1024)
+                
+                                # Decode data from bytes to string
+                                data_str = data.decode('utf-8')
+
+                                # Parse JSON data
+                                auth_info = json.loads(data_str)
+
+                                # Extract username and password
+                                username = auth_info['username']
+                                action = auth_info['password']
+                                
+                                if action == "Create User":
+                                    username, password = create_user_helper(connfd, username)
+                                    if username is not None:
+                                        backenddashboard.create_user(2, username, password, False)
+                                        log_action(connfd, username, admin_username, "Admin", "Create User", "Success")
+                                    else:
+                                        continue
+                                    
+                                elif action == "Create Admin":
+                                    username, password = create_user_helper(connfd, username)
+                                    if username:
+                                        backenddashboard.create_user(1, username, password, False)
+                                        log_action(connfd, username, admin_username, "Admin", "Create Admin", "Success")
+                                    else:
+                                        continue
+
+                                elif action == "Delete":
+                                    target_user = auth_info['target_user']
+                                    status = backenddashboard.delete_user(username, target_user)
+                                    print(status)
+                                    if status == 0:
+                                        log_action(connfd, target_user, admin_username, "Admin", "Delete Account", "Failed")
+                                        connfd.sendall("Denied".encode())
+                                    elif status == 1:
+                                        log_action(connfd, target_user, admin_username, "Admin", "Delete Account", "Success")
+                                        connfd.sendall("Success".encode())
+                                        # if they are logged in they are logged out
+                                    elif status == 2:
+                                        log_action(connfd, target_user, admin_username, "Admin", "Delete Account", "Failed")
+                                        connfd.sendall("User not found".encode())
+                                
+                                elif action == "Logs":
+                                    with open('server.log', 'rb') as log_file:
+                                        while True:
+                                            data = log_file.read(1024) 
+                                            if not data:
+                                                break  # If no more data, stop the loop
+                                            connfd.sendall(data)
+                                        connfd.sendall(b"END_OF_FILE")
+                                        
+                                elif action == "END_SESSION_ADMIN":
+                                    break
+                                    
+                        except Exception as e:
+                            print(f"An error occurred: {e}")
+                                    
+                        finally:
+                            print(f'{username} logged out')
+                            try:
+                                log_action(connfd, username, username, "Admin", "Log Out", "Success")
+                                connfd.close()
+                                del clients[username]
+                                del admin_logged_in[username]
+                                print("SSL socket closed successfully")
+                                break
+                            except Exception as e:
+                                print("Error closing SSL socket:", e)
+                                import traceback
+                                traceback.print_exc()
+                        
+                        
+                    elif auth == "2":
+                        print(f"{username} authenticated successfully.")
+                        connfd.sendall(str(auth).encode()) 
+                        clients[username] = connfd
+                        logged_in[username] = 'yes'
+                        blocked_users[username] = []
+                        print(f"{username} logged in.")
+                        log_action(connfd, username, username, "User", "Log In", "Success")
+                        user_handler(connfd, username)
+                        break
+                        
+                    elif auth == "User does not exist":
+                        connfd.sendall(str(auth).encode())
+                        break
+                        
+                    else:
+                        failed_role = auth[1]
+                        if failed_role == "0":
+                            failed_role = "Superadmin"
+                        elif failed_role == "1":
+                            failed_role = "Admin"
+                        elif failed_role == "2":
+                            failed_role = "User"
+                        print(f"Authentication failed for user {username}.")
+                        log_action(connfd, username, username, failed_role, "Log In", "Failed")
+                        connfd.sendall("Login failed.".encode())
+                        break
+            elif action == "end":
+                break
 
     except json.JSONDecodeError:
         print("Failed to decode JSON data")
@@ -521,7 +565,8 @@ def client_handler(connfd):
     except Exception as e:
         print(f"An error occurred: {e}")
         connfd.sendall("Error processing your request.".encode())
-        print("here 1")
+    finally:
+        connfd.close()
         
 
         

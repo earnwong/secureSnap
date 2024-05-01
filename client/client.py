@@ -3,8 +3,8 @@ import socket
 from os import _exit 
 from dashboard import Dashboard
 # from server.encrypt import EncryptDecrypt
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.PublicKey import RSA
+# from Crypto.Cipher import PKCS1_OAEP
+# from Crypto.PublicKey import RSA
 import json
 from frontenddashboard2 import FrontendDashboard
 import time
@@ -14,8 +14,10 @@ import ssl
 import easygui
 import tkinter as tk
 from tkinter import ttk
-import struct
+# import struct
 from queue import Queue
+import secrets
+import string
 
 
 
@@ -40,7 +42,7 @@ def connect_to_server(host, port):
 
         # Connect to the server
         secure_socket.connect((host, port))
-
+        
         return secure_socket
     
     except ssl.SSLError as e:
@@ -49,7 +51,7 @@ def connect_to_server(host, port):
         print(f"Failed to connect: {e}")
         
 
-def receive_photos_continuously(server_socket, username, queue):
+def receive_photos_continuously(server_socket, username):
     d = Dashboard(server_socket)
 
     while True:
@@ -66,7 +68,7 @@ def receive_photos_continuously(server_socket, username, queue):
             break
         
         
-def user_handler(server_socket, username, d, queue): 
+def user_handler(server_socket, username, d): 
     while True:
         action = frontend_dashboard.user_menu(username)
 
@@ -103,23 +105,12 @@ def user_handler(server_socket, username, d, queue):
                     response = server_socket.recv(22).decode('utf-8')
                 
                     if response == "This user is available":
-                        # accept_deny = server_socket.recv(1024).decode('utf-8')
-                        # if accept_deny:
-                        #     frontend_dashboard.display_message(f"{accept_deny} is trying to send an image")
-                        #     decision = easygui.enterbox("Would you like to accept or deny")
-                        #     if decision == 
+
                             
                         frontend_dashboard.display_message("This user is available")
                 
                         file_path = d.select_photo()
                         d.send_photo(file_path, recipient)
-
-                        # sends a prompt back to server ƒfor accept + deny
-                        
-                        # if rec == accept:
-                        #     d.send_photo(recipient, file_path) 
-                        # else:
-                        #     continue/break
                     
                     elif response == "Blocked":
                         frontend_dashboard.display_message("This user is not available")
@@ -178,6 +169,11 @@ def user_handler(server_socket, username, d, queue):
             pause_event.set()
             print("Invalid action. Please try again.")
 
+def generate_random_password(length=12):
+    # A strong password with letters, digits, and special characters
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(secrets.choice(characters) for i in range(length))
+    return password
 
 def createUserHelper(username, password, server_socket, role):
     # if password == "Create User": 
@@ -198,10 +194,11 @@ def createUserHelper(username, password, server_socket, role):
         return
     
     elif response == "Valid":
-        password = frontend_dashboard.get_password(role)
+        # password = frontend_dashboard.get_password(role)
+        # generate random password
+        password = generate_random_password()
         
-        if password is None:
-            return None
+        frontend_dashboard.display_message("Generating Random Password...")
         
         make_account = {'username': username, 'password': password}
         server_socket.sendall(json.dumps(make_account).encode())
@@ -214,7 +211,7 @@ def blockUserHelper(status):
     #response = server_socket.recv(1024).decode()
     status = int(status)
     if status == 0:
-        frontend_dashboard.display_message("Persmission denied: No authorization to block this account. Returning to menu...")
+        frontend_dashboard.display_message("Permission denied: No authorization to block this account. Returning to menu...")
     elif status == 1:
         frontend_dashboard.display_message("Successfully blocked this user. Returning to menu...")
     elif status == 2:
@@ -288,6 +285,43 @@ def view_log(username, action, server_socket):
     log_entries = parse_log_entries(log_contents)
 
     display_logs(log_entries)
+    
+    
+def verify_pin_helper(server_socket):
+    response = server_socket.recv(1024).decode()
+    print("response verify pin helper", response)
+    if response == "Get PIN":
+        print("get pin - line 303")
+        while True:
+            # pin_to_verify = frontend_dashboard.get_pin()
+            pin_to_verify = easygui.passwordbox("Check your email and enter PIN:", 'Verify email')
+            print("first time")
+            
+            if pin_to_verify is None:
+                # server_socket.sendall("Cancel".encode())
+                return False
+
+            server_socket.sendall(pin_to_verify.encode())
+            
+            response = server_socket.recv(1024).decode()
+
+            if response == "Get new password":
+                new_password = frontend_dashboard.reset_get_password() # validates pw
+                
+                server_socket.sendall(new_password.encode())
+
+                response = server_socket.recv(1024).decode()
+
+                if response == "Password updated":
+                    frontend_dashboard.display_message("Password updated")
+                    return True
+
+            elif response == "PIN not verified":
+                print("incorrect pin")
+                frontend_dashboard.display_message("Incorrect Pin. Try Again")
+                continue
+            
+
 
 def main():
     # parse arguments
@@ -297,7 +331,6 @@ def main():
     host = sys.argv[1]
     port = sys.argv[2]
 
-    
 
     while True:
         # Connect to the server
@@ -310,23 +343,46 @@ def main():
             while True:
                 # Prompt user for username and password
                 action = frontend_dashboard.landing_page()
-                print(action)
                 
                 if action == "Login":
-                    username, password = frontend_dashboard.login()
-                    login_info = {'username': username, 'password': password, 'action': "Login"}
+                    username = frontend_dashboard.username_login()
+                    
+                    login_info = {'username': username, 'password': None, 'action': "Login"}
                     server_socket.sendall(json.dumps(login_info).encode())
                     
                     response = server_socket.recv(1024).decode()
-                    print("response:", response)
+                    
                     if response == "You are logged in already":
                         frontend_dashboard.display_message("You are already logged in.")
                         continue
+                    
                     elif response == "auth":
+                        continue
+                    
+                    elif response == "Verified":
+                        password = frontend_dashboard.password_login()
+                        login_info = {'username': username, 'password': password, 'action': "Login"}
+                        server_socket.sendall(json.dumps(login_info).encode())
                         break
+                        
+                    elif response == "Not verified":
+                        frontend_dashboard.display_message("You have not verified your account.")
+                        if verify_pin_helper(server_socket):
+                            continue # pin is verified and they can log in properly
+                        else:
+                            print("Invalid PIN entered. Please try again.")
+                            continue
+                        
+
 
                 elif action == "Create User": 
                     username, password = frontend_dashboard.create_user()
+                    
+                    if username is None:
+                        continue
+                    
+                    print(username, password)
+                    
                     # STEP 1 - send username
                     auth_info = {'username': username, 'password': password, 'action': "Create User"}
                     print(auth_info)
@@ -410,6 +466,13 @@ def main():
                     elif response == "User does not exist":
                         frontend_dashboard.display_message("User does not exist. Returning to menu...")
                         continue
+                
+                elif action == "end":
+                    login_info = {'username': None, 'password': None, 'action': "end"}
+                    server_socket.sendall(json.dumps(login_info).encode())
+                    server_socket.close()
+                    _exit(0) # Exits the program
+                    
     
             # Wait for response from the server regarding the login attempt
             response = server_socket.recv(1024).decode()
@@ -440,7 +503,6 @@ def main():
     
     if role == "0":
         while True:
-            #print("IT GOES HERE GODDAMIT")
             action = frontend_dashboard.superadmin_menu(username)
             print(action)
             
@@ -467,8 +529,6 @@ def main():
                 delete_user_helper(username, action, target_user, server_socket)
                 
             if action == "Reset":
-                # login_info = {'username': username, 'password': password}
-                # server_socket.sendall(json.dumps(login_info).encode())
                 return
 
             if action == "Logs":
@@ -521,13 +581,12 @@ def main():
                 
     if role == "2":
         d = Dashboard(server_socket)
-        queue = Queue()
     
-        photo_thread = threading.Thread(target=receive_photos_continuously, args=(server_socket, username, queue))
+        photo_thread = threading.Thread(target=receive_photos_continuously, args=(server_socket, username))
         photo_thread.start()
         
         try:
-            user_handler(server_socket, username, d, queue)
+            user_handler(server_socket, username, d)
         except Exception as e:
             print(f"An error occurred: {e}")
         finally:

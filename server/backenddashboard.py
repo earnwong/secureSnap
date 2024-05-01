@@ -24,6 +24,21 @@ class BackendDashboard():
         #role = row["role"]
         return row.iloc[0]["role"]
     
+    def get_auth_level_str(self, role):
+        if role == 0:
+            return "superadmin"
+        elif role == 1:
+            return "admin"
+        else:
+            return "user"
+        
+    def check_verify(self, username):
+        userinfo_df = self.read_csv_as_df()
+        user_row = userinfo_df[userinfo_df['username'] == username]
+        verify = user_row['verified'].iloc[0]
+        
+        return verify
+            
     def user_exists(self, username):
         userinfo_df = self.read_csv_as_df()
         entry_exists = (userinfo_df['username'] == username).any()
@@ -37,6 +52,7 @@ class BackendDashboard():
         
         if entry_exists:
             print("entry exists")
+    
             auth_level = self.get_auth_level(entered_username)
             # get row of desired userinput
             row = userinfo_df[userinfo_df['username'] == entered_username]
@@ -52,10 +68,8 @@ class BackendDashboard():
 
             # check if salted and hased UI matches stored salted and hashed UI
             if stored_hex_hash_salt_pw == entered_hex_hash_salt_pw:
-                print('auth')
                 return str(auth_level)
             else:
-                print('no auth')
                 return ("Failed", str(auth_level))
         
         else:
@@ -170,15 +184,7 @@ class BackendDashboard():
         pin = self.generate_pin()
         self.send_ver_email(email_to_verify, pin)
         return pin
-
     
-    def get_pin(self):
-        while (True):
-            pin = easygui.passwordbox("Check your email and enter PIN:", 'Verify email')
-            if pin is None:
-                break
-            return pin
-
     def verify_pin(self, pin_to_verify, pin):
   
         while (True):
@@ -247,34 +253,3 @@ class BackendDashboard():
             "verified": True
         }
         self.add_csv_record("userinfo.csv", new_user_info)
-
-
-        # user_id = input_df[input_df['username'] == target_user]['userID'].values[0]
-
-
-        # removed_user_df = input_df[input_df['username'] != target_user] # deleting user
-        # print("removed user")
-        
-        # # #update csv with user removed
-        # # self.df_to_csv("userinfo.csv", removed_user_df)
-
-        # # salt password
-        # salt = self.gen_salt()
-        # salt_password = password + salt
-
-        # # hash salted password
-        # hash_obj = hashlib.sha256()
-        # hash_obj.update(salt_password.encode())
-        # hex_hash_salt_pw = hash_obj.hexdigest()
-    
-        # # add to password csv
-        # new_userinfo = {"username":target_user, 
-        #                 "userID":str(current_new_userID), 
-        #                 "role":role,
-        #                 "password":hex_hash_salt_pw,
-        #                 "salt":salt,
-        #                 "verify": True}
-
-        # self.add_csv_record("userinfo.csv",new_userinfo)
-        # easygui.msgbox("Password updated")
-        # # read csv and update user id tracker     

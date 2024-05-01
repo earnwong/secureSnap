@@ -1,0 +1,2 @@
+ALERT: 01/May/2024:02:16:38  : Three failed login attempts for user earnw783@gmail.com from IP ('127.0.0.1', 50240) within 5 minutes.
+ALERT: 01/May/2024:02:17:10  : Three failed login attempts for user earnw783@gmail.com from IP ('127.0.0.1', 50244) within 5 minutes.
