@@ -124,6 +124,8 @@ class Dashboard:
 
         # Use select to check for read readiness
         readable, writable, exceptional = select.select(sockets_to_read, sockets_to_write, sockets_with_errors, timeout)
+        print(server_socket)
+        print(readable)
         if not readable:
             return False
         else:

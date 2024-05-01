@@ -91,6 +91,7 @@ def user_handler(connfd, username):
                 break
 
             if user == None and action == "send":
+                print("i go into user none")
                 # Convert the dictionary to a JSON string
                 logged_in_json = json.dumps(logged_in)
 
@@ -103,7 +104,7 @@ def user_handler(connfd, username):
             
             if (user in clients) and action == "send":
                 recipient = user
-                #print("I AM HERE")
+                print("I AM HERE")
                 if logged_in[recipient] == 'yes':
                     
                     if username not in blocked_users[recipient]:

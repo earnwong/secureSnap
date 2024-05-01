@@ -77,15 +77,15 @@ def user_handler(server_socket, username, d):
 
 
         if action == "send":
+            print("goes into action send")
             pause_event.set()
             print("Pause event when I click send:", pause_event.is_set())
             
             try:
                 get_loggedin_info = {'username': None, 'password': action}
                 server_socket.sendall(json.dumps(get_loggedin_info).encode())
-                
-                # server_socket.sendall(action.encode())
-                
+                print(get_loggedin_info)
+                                
                 logged_in = server_socket.recv(1024)
                 
                 # Decode the bytes back to a string
@@ -96,6 +96,7 @@ def user_handler(server_socket, username, d):
                 #print(logged_in_received)
                 
                 recipient = frontend_dashboard.select_user(logged_in_received, username)
+                print(recipient)
 
                 if recipient:
                     sending_info = {'username': recipient, 'password': action}
@@ -110,7 +111,10 @@ def user_handler(server_socket, username, d):
                         frontend_dashboard.display_message("This user is available")
                 
                         file_path = d.select_photo()
-                        d.send_photo(file_path, recipient)
+                        if file_path is None:
+                            continue
+                        else:
+                            d.send_photo(file_path, recipient)
                     
                     elif response == "Blocked":
                         frontend_dashboard.display_message("This user is not available")
@@ -120,6 +124,7 @@ def user_handler(server_socket, username, d):
                     continue
                 
             finally:
+                print("Clear")
                 pause_event.clear()
 
         elif action == "block":
