@@ -181,20 +181,21 @@ def createUserHelper(username, password, server_socket, role):
     
     login_info = {'username': username, 'password': password}
     server_socket.sendall(json.dumps(login_info).encode())
-    
-    print("SENT USERNAME")
-    
+        
     response = server_socket.recv(1024).decode()
 
-    print("response from server", response)
+    # print("response from server", response)
     
     if response == "Username taken":
         #display username taken on gui
         frontend_dashboard.display_message("Username Taken. Try Again.")
         return
     
+    elif response == "Email not valid":
+        frontend_dashboard.display_message("Not a valid email. Try Again.")
+        return
+                
     elif response == "Valid":
-        # password = frontend_dashboard.get_password(role)
         # generate random password
         password = generate_random_password()
         
@@ -372,8 +373,13 @@ def main():
                         else:
                             print("Invalid PIN entered. Please try again.")
                             continue
-                        
-
+                    elif response == "User does not exist":
+                        frontend_dashboard.display_message("This user does not exist")
+                        continue
+                    elif response == "Email not valid":
+                        frontend_dashboard.display_message("Not a valid email. Try Again.")
+                        continue
+                    
 
                 elif action == "Create User": 
                     username, password = frontend_dashboard.create_user()
@@ -396,6 +402,10 @@ def main():
                         #display username taken on gui
                         frontend_dashboard.display_message("Username Taken. Try Again.")
                         continue
+                    elif response == "Email not valid":
+                        frontend_dashboard.display_message("Not a valid email. Try Again.")
+                        continue
+                    
                     elif response == "Valid username":
                         # verify 
                         while True: # repeat until valid pw is entered

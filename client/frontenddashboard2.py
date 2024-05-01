@@ -214,6 +214,8 @@ class FrontendDashboard:
                 self.display_message("Username not valid.")
                 continue
             password = easygui.passwordbox("Enter password", title = "Create User")
+            if password is None: # pressed cancel
+                return None, None
             return username, password
             
         

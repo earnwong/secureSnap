@@ -173,6 +173,11 @@ def create_user_helper(connfd, username):
         # send a message back to user that username is taken
         connfd.sendall("Username taken".encode())
         return (None, None)
+    
+    elif not backenddashboard.is_valid_email(username):
+        connfd.sendall("Email not valid".encode())
+        return (None, None)
+    
     else:
         connfd.sendall("Valid".encode())
         data = connfd.recv(1024)
@@ -251,9 +256,11 @@ def client_handler(connfd):
             action = auth_info['action']
             
             if action == "Create User":
-                print("server line 147")
                 if backenddashboard.check_user_taken(username):
                     connfd.sendall("Username taken".encode())
+                    continue
+                elif not backenddashboard.is_valid_email(username):
+                    connfd.sendall("Email not valid".encode())
                     continue
                     
                 else:
@@ -264,6 +271,7 @@ def client_handler(connfd):
                     # wait for password to be verified first
                     if response == "Valid password":
                         pin = backenddashboard.send_email_and_return_pin(username)
+                        
                         connfd.sendall("Get PIN".encode())
                         pin_to_verify = connfd.recv(1024).decode()
                         email_verified = backenddashboard.verify_pin(pin_to_verify,pin)
@@ -331,20 +339,30 @@ def client_handler(connfd):
 
             elif action == "Login":
                 if password == None:
-                    if backenddashboard.check_verify(username) and not (username in logged_in or username in admin_logged_in):
-                        connfd.sendall("Verified".encode('utf-8'))
-                        continue
-                    elif not (backenddashboard.check_verify(username)):
-                        connfd.sendall("Not verified".encode('utf-8'))
-                        if verify_pin_helper(connfd, username):
+                    if backenddashboard.user_exists(username):
+                        if backenddashboard.check_verify(username) and not (username in logged_in or username in admin_logged_in):
+                            connfd.sendall("Verified".encode('utf-8'))
                             continue
                         
-                    elif username in logged_in or username in admin_logged_in:
-                        connfd.sendall("You are logged in already".encode('utf-8'))
-                        print("You tried logging in again")
+                        elif not (backenddashboard.check_verify(username)):
+                            connfd.sendall("Not verified".encode('utf-8'))
+                            if verify_pin_helper(connfd, username):
+                                continue
+                            
+                        elif username in logged_in or username in admin_logged_in:
+                            connfd.sendall("You are logged in already".encode('utf-8'))
+                            print("You tried logging in again")
+                            continue
+                        
+                        else:
+                            connfd.sendall("auth".encode('utf-8'))
+                    elif backenddashboard.is_valid_email(username):
+                        connfd.sendall("Email not valid".encode())
                         continue
+                    
                     else:
-                        connfd.sendall("auth".encode('utf-8'))
+                        connfd.sendall("User does not exist".encode())
+                        continue
                         
                 else:
 

@@ -7,6 +7,7 @@ from email.message import EmailMessage
 import smtplib
 import random
 import string
+from email_validator import validate_email, EmailNotValidError
 
 
 class BackendDashboard():
@@ -198,6 +199,16 @@ class BackendDashboard():
 
     def generate_pin(self, length=6):
         return ''.join(random.choices(string.digits, k=length))
+    
+    def is_valid_email(self, email):
+        try:
+            # validate and get info
+            valid = validate_email(email)
+            email = valid.email
+            return True
+        except EmailNotValidError as e:
+            # email is not valid, exception message is human-readable
+            return False
 
     def send_ver_email(self,recipient_email,pin):
         sender_email = "securesnap7@gmail.com"
