@@ -371,7 +371,46 @@ def main():
                                         frontend_dashboard.display_message("User created successfully")
                                         break
 
-            
+
+                elif action == "Forgot password":
+                    username = frontend_dashboard.get_email()
+
+                    login_info = {'username': username, 'password': None, 'action': "Forgot password"}
+                    server_socket.sendall(json.dumps(login_info).encode())
+
+                    response = server_socket.recv(1024).decode()
+                    if response == "Get PIN":
+
+                        while True:
+                            pin_to_verify = frontend_dashboard.get_pin()
+                            if pin_to_verify == None:
+                                break
+
+                            server_socket.sendall(pin_to_verify.encode())
+                            
+                            response = server_socket.recv(1024).decode()
+
+                            if response == "Get new password":
+                                new_password = frontend_dashboard.reset_get_password() # validates pw
+                                
+                                server_socket.sendall(new_password.encode())
+
+                                response = server_socket.recv(1024).decode()
+
+                                if response == "Password updated":
+                                    frontend_dashboard.display_message("Password updated")
+                                    break
+
+                                continue
+
+                            elif response == "PIN not verified":
+                                frontend_dashboard.display_message("Incorrect Pin. Try Again")
+                                continue
+
+                    elif response == "User does not exist":
+                        frontend_dashboard.display_message("User does not exist. Returning to menu...")
+                        continue
+    
             # Wait for response from the server regarding the login attempt
             response = server_socket.recv(1024).decode()
 

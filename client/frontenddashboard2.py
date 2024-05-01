@@ -175,13 +175,20 @@ class FrontendDashboard:
                 return "end"
             
     def landing_page(self): # return password and username
-        actions = ["Login","Create User",'quit']
+        actions = ["Login","Create User", "Forgot password", 'quit']
         action = easygui.buttonbox("Choose an action:", choices = actions)
         if action == 'quit':
             quit()
         else:
             return action
-    
+        
+    def get_email(self):
+        while True:
+            entered_username = easygui.enterbox("Enter username: ", title="Login")
+            if entered_username is None:
+                break
+            return entered_username
+
     def login(self):
         while True:
             entered_username = easygui.enterbox("Enter username: ", title="Login")
@@ -278,6 +285,19 @@ class FrontendDashboard:
                 continue
         return None
 
+    def reset_get_password(self):
+        while (True):
+            password = easygui.passwordbox("Enter password:", "Reset password")
+            if password is None:
+                break
+            # check if password meets requirements
+            if self.valid_pw(password):
+                return password
+            else:
+                easygui.msgbox("Invalid password")
+                continue
+        return None
+
     # def reset_self_password(self, user):
     #     userinfo_df = read_csv_as_df()
     #     print(userinfo_df)
@@ -369,3 +389,4 @@ class FrontendDashboard:
     #     easygui.msgbox("Password updated")
         # read csv and update user id tracker     
 
+    

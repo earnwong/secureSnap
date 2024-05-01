@@ -24,6 +24,11 @@ class BackendDashboard():
         #role = row["role"]
         return row.iloc[0]["role"]
     
+    def user_exists(self, username):
+        userinfo_df = self.read_csv_as_df()
+        entry_exists = (userinfo_df['username'] == username).any()
+        return entry_exists
+    
     def auth_login(self, entered_username, entered_password):
         userinfo_df = self.read_csv_as_df()
         
@@ -208,3 +213,68 @@ class BackendDashboard():
 
         server.sendmail(sender_email,recipient_email,email.as_string())
         print('mail sent')
+
+
+    def update_pw(self, target_user, password, role):
+        input_df = self.read_csv_as_df()
+
+        user_row = input_df[input_df['username'] == target_user]
+        print(user_row)
+        user_id = user_row['userID'].iloc[0]
+        print("User ID:", user_id)
+
+        # Removing the user
+        removed_user_df = input_df[input_df['username'] != target_user]
+        print("User removed")
+
+        # Update the CSV without the removed user
+        self.df_to_csv("userinfo.csv", removed_user_df)
+
+        # Salt and hash the new password
+        salt = self.gen_salt()
+        salted_password = password + salt
+        hash_obj = hashlib.sha256()
+        hash_obj.update(salted_password.encode())
+        hex_hashed_password = hash_obj.hexdigest()
+
+        # Add new entry with the updated password
+        new_user_info = {
+            "username": target_user, 
+            "userID": user_id, 
+            "role": role,
+            "password": hex_hashed_password,
+            "salt": salt,
+            "verified": True
+        }
+        self.add_csv_record("userinfo.csv", new_user_info)
+
+
+        # user_id = input_df[input_df['username'] == target_user]['userID'].values[0]
+
+
+        # removed_user_df = input_df[input_df['username'] != target_user] # deleting user
+        # print("removed user")
+        
+        # # #update csv with user removed
+        # # self.df_to_csv("userinfo.csv", removed_user_df)
+
+        # # salt password
+        # salt = self.gen_salt()
+        # salt_password = password + salt
+
+        # # hash salted password
+        # hash_obj = hashlib.sha256()
+        # hash_obj.update(salt_password.encode())
+        # hex_hash_salt_pw = hash_obj.hexdigest()
+    
+        # # add to password csv
+        # new_userinfo = {"username":target_user, 
+        #                 "userID":str(current_new_userID), 
+        #                 "role":role,
+        #                 "password":hex_hash_salt_pw,
+        #                 "salt":salt,
+        #                 "verify": True}
+
+        # self.add_csv_record("userinfo.csv",new_userinfo)
+        # easygui.msgbox("Password updated")
+        # # read csv and update user id tracker     

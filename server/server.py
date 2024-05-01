@@ -202,8 +202,7 @@ def client_handler(connfd):
             username = auth_info['username']
             password = auth_info['password']
             action = auth_info['action']
-            print(username, password)
-            print(action)
+            print(username, password, action)
             
             if action == "Create User":
                 print("server line 147")
@@ -252,28 +251,47 @@ def client_handler(connfd):
                             continue
                         else:
                             connfd.sendall("Invalid PIN")
-                # # create user 
-                # if backenddashboard.check_user_taken(username):
-                #     connfd.sendall("Username taken".encode())
-                #     continue
-                #     # send a message back to user that username is taken
-                # else:
-                #     connfd.sendall("Valid".encode())
-                #     data = connfd.recv(1024)
             
-                #     # Decode data from bytes to string
-                #     data_str = data.decode('utf-8')
+            elif action == "Forgot password":
+                print("inside server forgot password")
 
-                #     # Parse JSON data
-                #     auth_info = json.loads(data_str)
+                email_to_check = username
+                user_exists = backenddashboard.user_exists(email_to_check)
+                print(user_exists)
+                if user_exists:
+                    # generate pin and send
+                    pin = backenddashboard.send_email_and_return_pin(email_to_check)
+                    # verify pin
+                    connfd.sendall("Get PIN".encode())
+                    while True:  
 
-                #     # Extract username and password
-                #     username = auth_info['username']
-                #     password = auth_info['password']
-                    
-                #     backenddashboard.create_user(2, username, password)
-                    # username is valid now prompt for password
-            else:
+                        pin_to_verify = connfd.recv(1024).decode()  
+                        pin_verified = backenddashboard.verify_pin(pin_to_verify,pin)
+
+                        if pin_verified:
+                            # request new pw
+                            connfd.sendall("Get new password".encode())
+                            
+                            new_password = connfd.recv(1024).decode()
+
+                            role = backenddashboard.get_auth_level(email_to_check)
+                            backenddashboard.update_pw(email_to_check, new_password, role)
+                            
+                            connfd.sendall("Password updated".encode())
+
+                            break
+
+                        else:
+                            connfd.sendall("PIN not verified".encode())
+                            continue
+
+                    continue
+
+                else:
+                    connfd.sendall("User does not exist".encode())
+
+
+            elif action == "Login":
                 # login 
                 print("line 278 - attempting to login")
                 print(logged_in)
@@ -318,7 +336,7 @@ def client_handler(connfd):
                             if action == "Create User":
                                 username, password = create_user_helper(connfd, username)
                                 if username:
-                                    backenddashboard.create_user(2, username, password)
+                                    backenddashboard.create_user(2, username, password, False)
                                     log_action(connfd, username, client_username, "Superadmin", "Create User", "Success")
                                 else:
                                     continue
@@ -326,7 +344,7 @@ def client_handler(connfd):
                             elif action == "Create Admin":
                                 username, password = create_user_helper(connfd, username)
                                 if username:
-                                    backenddashboard.create_user(1, username, password)
+                                    backenddashboard.create_user(1, username, password, False)
                                     log_action(connfd, username, client_username, "Superadmin", "Create Admin", "Success")
                                 else:
                                     continue
@@ -407,7 +425,7 @@ def client_handler(connfd):
                             if action == "Create User":
                                 username, password = create_user_helper(connfd, username)
                                 if username is not None:
-                                    backenddashboard.create_user(2, username, password)
+                                    backenddashboard.create_user(2, username, password, False)
                                     log_action(connfd, username, admin_username, "Admin", "Create User", "Success")
                                 else:
                                     continue
@@ -415,7 +433,7 @@ def client_handler(connfd):
                             elif action == "Create Admin":
                                 username, password = create_user_helper(connfd, username)
                                 if username:
-                                    backenddashboard.create_user(1, username, password)
+                                    backenddashboard.create_user(1, username, password, False)
                                     log_action(connfd, username, admin_username, "Admin", "Create Admin", "Success")
                                 else:
                                     continue
