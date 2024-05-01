@@ -4,7 +4,7 @@ from os import _exit as quit
 import threading
 from encrypt import Generate
 import base64
-from Crypto.Cipher import PKCS1_OAEP
+#from Crypto.Cipher import PKCS1_OAEP
 import json
 import threading
 import ssl
