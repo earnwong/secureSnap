@@ -2,7 +2,7 @@ import sys
 import socket
 from os import _exit as quit
 import threading
-from encrypt import Generate
+#from encrypt import Generate
 import base64
 #from Crypto.Cipher import PKCS1_OAEP
 import json
@@ -41,7 +41,7 @@ def log_action(connfd, username, action_user, role, action, status):
     log_file.flush()  # Flush the buffer to ensure the log entry is written immediately
 
 # session_manager = SessionManager()
-generate = Generate()
+#generate = Generate()
 backenddashboard = BackendDashboard()
 
 def user_handler(connfd, username):
