@@ -2,23 +2,20 @@ import sys
 import socket
 from os import _exit as quit
 import threading
-#from encrypt import Generate
-import base64
-#from Crypto.Cipher import PKCS1_OAEP
 import json
 import threading
 import ssl
 import datetime
 from backenddashboard import BackendDashboard
-import struct
-import time
+
 
 clients = {}  # store the connfd
 logged_in = {} # Keeps track of the users who logged in
 admin_logged_in = {} # admin/superadmin log in tracker
-blocked_users = {}
+blocked_users = {} # stores blocked users
 alerts = {} # stores failed attempts
 
+backenddashboard = BackendDashboard() # for backend functionality
 
 # Initialize logging
 log_file = open("server.log", "a")
@@ -27,8 +24,24 @@ log_file = open("server.log", "a")
 alert_log_file = open("alerts.log", "a")
 
 def log_action(connfd, username, action_user, role, action, status):
-    # if action == "Log in":
+    """
+    Logs actions taken by users along with their authentication status, the action taken,
+    and relevant user and system information.
 
+    Args:
+        connfd (socket): The socket connection file descriptor through which the user is connected.
+        username (str): The username of the user who is subject to the action.
+        action_user (str): The username of the user who performed the action.
+        role (str): The role of the user who performed the action (e.g., 'Admin', 'User').
+        action (str): The specific action being logged (e.g., 'Log In', 'Delete Account').
+        status (str): The result of the action (e.g., 'Success', 'Failed').
+
+    Side effects:
+        Writes a log entry to a log file. This includes the current timestamp, the user's IP address,
+        the action taken, and the outcome of the action.
+        Monitors for multiple failed login attempts and logs security alerts if necessary.
+    """
+    
     IP_address = connfd.getpeername()
 
     # Get the current date and time
@@ -67,11 +80,21 @@ def log_action(connfd, username, action_user, role, action, status):
             alerts[key] = {'count': 0, 'first_attempt_time': current_datetime}
 
 
-# session_manager = SessionManager()
-#generate = Generate()
-backenddashboard = BackendDashboard()
+
 
 def user_handler(connfd, username):
+    """
+    Handles interactions with a user after they've logged in, managing various user actions
+    like sending data, blocking users, and deleting their account.
+
+    Args:
+        connfd (socket): The socket connection file descriptor for communication with the user.
+        username (str): The username of the user who is interacting with the system.
+
+    Side effects:
+        Processes various commands sent by the user and interacts with the backend to carry out
+        these commands. Logs out the user and closes the socket connection when the session ends.
+    """
     try:
         while True:
             
@@ -80,7 +103,6 @@ def user_handler(connfd, username):
             data_str = data.decode('utf-8')
 
             auth_info = json.loads(data_str)
-            print("auth_info:", auth_info)
 
             # Extract username and password
             user = auth_info['username']
@@ -90,8 +112,7 @@ def user_handler(connfd, username):
                 print("Session ended by the client.")
                 break
 
-            if user == None and action == "send":
-                print("i go into user none")
+            elif user == None and action == "send":
                 # Convert the dictionary to a JSON string
                 logged_in_json = json.dumps(logged_in)
 
@@ -102,34 +123,35 @@ def user_handler(connfd, username):
                 connfd.sendall(logged_in_bytes)
                 continue
             
-            if (user in clients) and action == "send":
+            elif (user in clients) and action == "send":
                 recipient = user
-                print("I AM HERE")
                 if logged_in[recipient] == 'yes':
-                    
                     if username not in blocked_users[recipient]:
-                        print('not blocked')
                         connfd.sendall("This user is available".encode('utf-8'))
+                        
+                        check_cancel_send = connfd.recv(1024).decode()
+                        if check_cancel_send == "Cancel send":
+                            continue
+                        elif check_cancel_send == "Sending":
+                            while True:
+                                data = connfd.recv(1024) 
+                                
+                                if (len(data) < 1024):
+                                    clients[recipient].sendall(data)
+                                    sys.stdout.flush()
+                                    break  # No more data to receive
+                                clients[recipient].sendall(data)
+                                
+                            clients[recipient].sendall(b"END_OF_FILE")
+                            print("file sent successfully")
+                        
                     else:
-                        print('blocked')
                         connfd.sendall("Blocked".encode('utf-8'))
                         continue
                     
-                    while True:
-                        data = connfd.recv(1024) 
-                        
-                        if (len(data) < 1024):
-                            clients[recipient].sendall(data)
-                            print("no more data")
-                            sys.stdout.flush()
-                            break  # No more data to receive
-                        clients[recipient].sendall(data)
-                        
-                    clients[recipient].sendall(b"END_OF_FILE")
-                    print("file sent successfully")
+                    
             
             elif (user == None) and action == "block":
-                #connfd.sendall("nothing".encode())
                 continue
 
             elif (user != None) and action == "block": 
@@ -155,7 +177,6 @@ def user_handler(connfd, username):
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
-        print("i go to the log out part")
         print(f'{username} logged out')
         try:
             log_action(connfd, username, username, "User", "Log Out", "Success")
@@ -169,7 +190,22 @@ def user_handler(connfd, username):
             traceback.print_exc()
         
 def create_user_helper(connfd, username):
-        
+    """
+    Assists in the creation of a new user, handling preliminary checks for username availability and
+    email validation.
+
+    Args:
+        connfd (socket): The socket connection file descriptor for sending responses back to the client.
+        username (str): The username (or email) proposed for the new user account.
+
+    Returns:
+        tuple: Returns a tuple of (username, password) if valid, otherwise (None, None).
+
+    Side effects:
+        Sends messages back to the client indicating the status of the username (taken or available)
+        and email validation.
+    """
+    
     if backenddashboard.check_user_taken(username):
         # send a message back to user that username is taken
         connfd.sendall("Username taken".encode())
@@ -196,6 +232,21 @@ def create_user_helper(connfd, username):
         return (username, password)
 
 def verify_pin_helper(connfd, email):
+    """
+    Helps verify the PIN sent to a user's email during processes like password reset or account verification.
+
+    Args:
+        connfd (socket): The socket connection for communication.
+        email (str): The email address of the user attempting verification.
+
+    Returns:
+        bool: True if the PIN is verified successfully, False otherwise.
+
+    Side effects:
+        Handles the interaction with the user for PIN verification and sends further instructions
+        based on the outcome of the verification.
+    """
+    
     # generate pin and send
     pin = backenddashboard.send_email_and_return_pin(email)
     # verify pin
@@ -211,15 +262,19 @@ def verify_pin_helper(connfd, email):
             connfd.sendall("Get new password".encode())
             
             new_password = connfd.recv(1024).decode()
+            
+            if new_password == "Cancel":
+                return False
 
-            role = backenddashboard.get_auth_level(email)
-            backenddashboard.update_pw(email, new_password, role)
-            
-            str_role = backenddashboard.get_auth_level_str(role)
-            
-            log_action(connfd, email, email, str_role, "Reset Password", "Success")
-            connfd.sendall("Password updated".encode())
-            return True
+            else:       
+                role = backenddashboard.get_auth_level(email)
+                backenddashboard.update_pw(email, new_password, role)
+                
+                str_role = backenddashboard.get_auth_level_str(role)
+                
+                log_action(connfd, email, email, str_role, "Reset Password", "Success")
+                connfd.sendall("Password updated".encode())
+                return True
         
         else:
             connfd.sendall("PIN not verified".encode())
@@ -227,6 +282,17 @@ def verify_pin_helper(connfd, email):
 
 
 def client_handler(connfd):
+    """
+    Handles client connections and manages the session lifecycle, including login attempts,
+    user creation, and password reset actions.
+
+    Args:
+        connfd (socket): The socket connection file descriptor for the connected client.
+
+    Side effects:
+        Manages user sessions and coordinates with the backend for authentication and user management.
+        Closes the client connection at the end of the session or in case of errors.
+    """
     try:
         while True:
             # Receive the login username and password from the client
@@ -257,48 +323,53 @@ def client_handler(connfd):
             action = auth_info['action']
             
             if action == "Create User":
-                if backenddashboard.check_user_taken(username):
-                    connfd.sendall("Username taken".encode())
-                    continue
-                elif not backenddashboard.is_valid_email(username):
-                    connfd.sendall("Email not valid".encode())
-                    continue
-                    
-                else:
-                    connfd.sendall("Valid username".encode())
-                    response = connfd.recv(1024).decode()
-                    
-                    # verify email
-                    # wait for password to be verified first
-                    if response == "Valid password":
-                        pin = backenddashboard.send_email_and_return_pin(username)
+                if password == None:
+                    if backenddashboard.check_user_taken(username):
+                        connfd.sendall("Username taken".encode())
+                        continue
+                    elif not backenddashboard.is_valid_email(username):
+                        connfd.sendall("Email not valid".encode())
+                        continue
+                    else:
+                        connfd.sendall("Valid username".encode())
                         
-                        connfd.sendall("Get PIN".encode())
-                        pin_to_verify = connfd.recv(1024).decode()
-                        email_verified = backenddashboard.verify_pin(pin_to_verify,pin)
-                        if email_verified: # email sent
-
-                            connfd.sendall("Valid PIN".encode())
-                            data = connfd.recv(1024)
+                        response = connfd.recv(1024).decode()
                     
-                            # Decode data from bytes to string
-                            data_str = data.decode('utf-8')
-
-                            # Parse JSON data
-                            auth_info = json.loads(data_str)
-
-                            # Extract username and password
-                            username = auth_info['username']
-                            password = auth_info['password']
-                            verified = auth_info['verified']
+                        # verify email
+                        # wait for password to be verified first
+                        if response == "Valid password":
+                            pin = backenddashboard.send_email_and_return_pin(username)
                             
-                            backenddashboard.create_user(2, username, password, verified)
-                            log_action(connfd, username, username, "User", "Create User", "Success")
+                            connfd.sendall("Get PIN".encode())
+                            
+                            pin_to_verify = connfd.recv(1024).decode()
+                            
+                            email_verified = backenddashboard.verify_pin(pin_to_verify,pin)
+                            
+                            if email_verified: # email sent
+                                connfd.sendall("Valid PIN".encode())
+                                data = connfd.recv(1024)
+                        
+                                # Decode data from bytes to string
+                                data_str = data.decode('utf-8')
 
-                            # username is valid now prompt for password
-                            continue
-                        else:
-                            connfd.sendall("Invalid PIN")
+                                # Parse JSON data
+                                auth_info = json.loads(data_str)
+
+                                # Extract username and password
+                                username = auth_info['username']
+                                password = auth_info['password']
+                                verified = auth_info['verified']
+                                
+                                backenddashboard.create_user(2, username, password, verified)
+                                log_action(connfd, username, username, "User", "Create User", "Success")
+
+                                # username is valid now prompt for password
+                                continue
+                            else:
+                                connfd.sendall("Invalid PIN".encode())
+                                continue
+                                               
             
             elif action == "Forgot password":
                 email_to_check = username
@@ -349,10 +420,12 @@ def client_handler(connfd):
                             connfd.sendall("Not verified".encode('utf-8'))
                             if verify_pin_helper(connfd, username):
                                 continue
+                            else:
+                                continue
+                        
                             
                         elif username in logged_in or username in admin_logged_in:
                             connfd.sendall("You are logged in already".encode('utf-8'))
-                            print("You tried logging in again")
                             continue
                         
                         else:
@@ -503,7 +576,7 @@ def client_handler(connfd):
                                 elif action == "Delete":
                                     target_user = auth_info['target_user']
                                     status = backenddashboard.delete_user(username, target_user)
-                                    print(status)
+
                                     if status == 0:
                                         log_action(connfd, target_user, admin_username, "Admin", "Delete Account", "Failed")
                                         connfd.sendall("Denied".encode())
@@ -587,9 +660,16 @@ def client_handler(connfd):
     finally:
         connfd.close()
         
-
         
 def main():
+    """
+    The main server function that sets up the SSL socket, accepts incoming connections,
+    and spawns new threads to handle these connections.
+
+    Side effects:
+        Continuously listens for incoming connections on a specified port, handling each connection
+        with a separate thread. Handles server startup and shutdown procedures.
+    """
     # parse arguments
     if len(sys.argv) != 2:
         print("usage: python3 %s <port>" % sys.argv[0])

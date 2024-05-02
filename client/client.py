@@ -2,9 +2,6 @@ import sys
 import socket
 from os import _exit 
 from dashboard import Dashboard
-# from server.encrypt import EncryptDecrypt
-# from Crypto.Cipher import PKCS1_OAEP
-# from Crypto.PublicKey import RSA
 import json
 from frontenddashboard2 import FrontendDashboard
 import time
@@ -14,11 +11,8 @@ import ssl
 import easygui
 import tkinter as tk
 from tkinter import ttk
-# import struct
-from queue import Queue
 import secrets
 import string
-
 
 
 frontend_dashboard = FrontendDashboard()
@@ -28,6 +22,20 @@ role = None
 end = "END_SESSION"
 
 def connect_to_server(host, port):
+    """
+    Establishes a secure SSL connection to the specified server.
+
+    Args:
+        host (str): The hostname or IP address of the server.
+        port (int): The port number on which the server is listening.
+
+    Returns:
+        ssl.SSLSocket: An SSL-wrapped socket connected to the server if successful, None otherwise.
+
+    Side effects:
+        Prints error messages directly to the console if exceptions are caught.
+    """
+    
     try: 
         # Create a standard socket
         raw_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -52,6 +60,17 @@ def connect_to_server(host, port):
         
 
 def receive_photos_continuously(server_socket, username):
+    """
+    Receives photos continuously from the server and processes them.
+
+    Args:
+        server_socket (socket): The socket connected to the server.
+        username (str): The username of the user receiving photos.
+
+    Side effects:
+        Runs indefinitely until an exception occurs. Pauses when an event is set.
+    """
+    
     d = Dashboard(server_socket)
 
     while True:
@@ -69,22 +88,28 @@ def receive_photos_continuously(server_socket, username):
         
         
 def user_handler(server_socket, username, d): 
+    """
+    Handles user interactions and processes various actions based on user input from the frontend.
+
+    Args:
+        server_socket (socket): The socket connected to the server.
+        username (str): The username of the logged-in user.
+        d (Dashboard): An instance of the Dashboard class for managing user data and actions.
+
+    Side effects:
+        Processes user actions and communicates with the server. Can exit the application based on user actions.
+    """
+    
     while True:
         action = frontend_dashboard.user_menu(username)
 
 
-        print("Action:", action)
-
-
         if action == "send":
-            print("goes into action send")
             pause_event.set()
-            print("Pause event when I click send:", pause_event.is_set())
             
             try:
                 get_loggedin_info = {'username': None, 'password': action}
                 server_socket.sendall(json.dumps(get_loggedin_info).encode())
-                print(get_loggedin_info)
                                 
                 logged_in = server_socket.recv(1024)
                 
@@ -93,10 +118,8 @@ def user_handler(server_socket, username, d):
                 
                 # Convert the JSON string back to a dictionary
                 logged_in_received = json.loads(data_str)
-                #print(logged_in_received)
                 
                 recipient = frontend_dashboard.select_user(logged_in_received, username)
-                print(recipient)
 
                 if recipient:
                     sending_info = {'username': recipient, 'password': action}
@@ -112,19 +135,21 @@ def user_handler(server_socket, username, d):
                 
                         file_path = d.select_photo()
                         if file_path is None:
+                            server_socket.sendall("Cancel send".encode())
                             continue
                         else:
+                            server_socket.sendall("Sending".encode())
                             d.send_photo(file_path, recipient)
                     
                     elif response == "Blocked":
                         frontend_dashboard.display_message("This user is not available")
                     else:
                         print(response)
+                        
                 else:
                     continue
                 
             finally:
-                print("Clear")
                 pause_event.clear()
 
         elif action == "block":
@@ -137,25 +162,19 @@ def user_handler(server_socket, username, d):
                     server_socket.sendall(json.dumps(get_loggedin_info).encode())
                     continue
                 else: 
-                    #server_socket.recv()
                     get_loggedin_info = {'username': username, 'password': action}
                     server_socket.sendall(json.dumps(get_loggedin_info).encode())
-                    #print("target user:", target_user)
                     server_socket.sendall(target_user.encode())
                     status = server_socket.recv(1024).decode()
-                    #status = int(status)
-                    print("status:", status)
                     blockUserHelper(status)
-            #time.sleep(10)
+                    
             finally:
                 pause_event.clear()
 
         elif action == "end":
             pause_event.set()
             sending_info = {'username': None, 'password': end}
-            print("i can go into end")
             server_socket.sendall(json.dumps(sending_info).encode())
-            print("i send something")
             server_socket.close()
             _exit(0) # Exits the program
             
@@ -178,21 +197,39 @@ def user_handler(server_socket, username, d):
             print("Invalid action. Please try again.")
 
 def generate_random_password(length=12):
+    """
+    Generates a random password containing letters, digits, and special characters.
+
+    Args:
+        length (int): The length of the password to generate.
+
+    Returns:
+        str: A randomly generated password.
+    """
+    
     # A strong password with letters, digits, and special characters
     characters = string.ascii_letters + string.digits + string.punctuation
     password = ''.join(secrets.choice(characters) for i in range(length))
     return password
 
 def createUserHelper(username, password, server_socket, role):
-    # if password == "Create User": 
-    # Send the username and action ("Create user") to the server
+    """
+    Assists in creating a user account by sending credentials to the server and processing the response.
+
+    Args:
+        username (str): The username for the new account.
+        password (str): The password for the new account.
+        server_socket (socket): The socket connected to the server.
+        role (str): The role of the user (e.g., 'admin', 'user').
+
+    Side effects:
+        Sends data to the server and displays messages based on server responses.
+    """
     
     login_info = {'username': username, 'password': password}
     server_socket.sendall(json.dumps(login_info).encode())
         
     response = server_socket.recv(1024).decode()
-
-    # print("response from server", response)
     
     if response == "Username taken":
         #display username taken on gui
@@ -215,9 +252,15 @@ def createUserHelper(username, password, server_socket, role):
         frontend_dashboard.display_message("User created successfully")
         
 def blockUserHelper(status):
-    #login_info = {'username': username, 'password': action, 'target_user': target_user}
-    #server_socket.sendall(json.dumps(login_info).encode())
-    #response = server_socket.recv(1024).decode()
+    """
+    Processes the response from a user-blocking attempt and displays appropriate messages.
+
+    Args:
+        status (str): The status code returned from the server indicating the result of the block attempt.
+
+    Side effects:
+        Displays messages to the user based on the block attempt result.
+    """
     status = int(status)
     if status == 0:
         frontend_dashboard.display_message("Permission denied: No authorization to block this account. Returning to menu...")
@@ -227,6 +270,19 @@ def blockUserHelper(status):
         frontend_dashboard.display_message("User does not exist. Returning to menu...")
 
 def delete_user_helper(username, action, target_user, server_socket):
+    """
+    Sends a request to the server to delete a user and handles the response.
+
+    Args:
+        username (str): The username of the person requesting the deletion.
+        action (str): The action being taken ('Delete').
+        target_user (str): The username of the user to be deleted.
+        server_socket (socket): The socket connected to the server.
+
+    Side effects:
+        Sends a deletion request to the server and processes the response, displaying messages accordingly.
+    """
+    
     # username is the username they want to delete, password is the action
     login_info = {'username': username, 'password': action, 'target_user': target_user}
     
@@ -243,8 +299,17 @@ def delete_user_helper(username, action, target_user, server_socket):
         frontend_dashboard.display_message("User does not exist. Returning to menu...")
 
 def parse_log_entries(log_data):
+    """
+    Parses log data from the server into a structured format.
+
+    Args:
+        log_data (str): Raw log data as a single string.
+
+    Returns:
+        list: A list of dictionaries, each containing details of a single log entry.
+    """
+    
     entries = log_data.strip().split("\n")
-    #print(entries)
     structured_entries = []
     for entry in entries:
         parts = entry.split(", ")
@@ -264,6 +329,16 @@ def parse_log_entries(log_data):
     return structured_entries
 
 def display_logs(logs):
+    """
+    Displays log entries in a graphical interface using a tree view.
+
+    Args:
+        logs (list): A list of dictionaries where each dictionary represents a log entry.
+
+    Side effects:
+        Creates and runs a Tkinter window displaying the logs.
+    """
+    
     root = tk.Tk()
     root.title("Log Viewer")
 
@@ -278,6 +353,18 @@ def display_logs(logs):
     root.mainloop()
 
 def view_log(username, action, server_socket):
+    """
+    Requests log data from the server based on a user's action and displays it.
+
+    Args:
+        username (str): The username of the user requesting the logs.
+        action (str): The specific action taken that requires log viewing.
+        server_socket (socket): The socket connected to the server.
+
+    Side effects:
+        Requests and receives log data from the server, then displays it using a GUI.
+    """
+    
     send_info = {'username': username, 'password': action}
     server_socket.sendall(json.dumps(send_info).encode())
 
@@ -297,17 +384,25 @@ def view_log(username, action, server_socket):
     
     
 def verify_pin_helper(server_socket):
+    """
+    Assists in the verification of a PIN during account verification processes.
+
+    Args:
+        server_socket (socket): The socket connected to the server.
+
+    Returns:
+        bool: True if the PIN verification is successful, False otherwise.
+
+    Side effects:
+        Interacts with the server and user to verify a PIN and optionally reset a password.
+    """
     response = server_socket.recv(1024).decode()
-    print("response verify pin helper", response)
     if response == "Get PIN":
-        print("get pin - line 303")
         while True:
             # pin_to_verify = frontend_dashboard.get_pin()
             pin_to_verify = easygui.passwordbox("Check your email and enter PIN:", 'Verify email')
-            print("first time")
             
             if pin_to_verify is None:
-                # server_socket.sendall("Cancel".encode())
                 return False
 
             server_socket.sendall(pin_to_verify.encode())
@@ -317,22 +412,33 @@ def verify_pin_helper(server_socket):
             if response == "Get new password":
                 new_password = frontend_dashboard.reset_get_password() # validates pw
                 
-                server_socket.sendall(new_password.encode())
+                if new_password is None:
+                    server_socket.sendall("Cancel".encode())
+                    return "cancel"
+                
+                else:
+                    server_socket.sendall(new_password.encode())
 
-                response = server_socket.recv(1024).decode()
+                    response = server_socket.recv(1024).decode()
 
-                if response == "Password updated":
-                    frontend_dashboard.display_message("Password updated")
-                    return True
+                    if response == "Password updated":
+                        frontend_dashboard.display_message("Password updated")
+                        return True
 
             elif response == "PIN not verified":
-                print("incorrect pin")
-                frontend_dashboard.display_message("Incorrect Pin. Try Again")
-                continue
+                return False
             
 
 
 def main():
+    """
+    Main function to handle server connection, user authentication, and initiation of user interaction.
+
+    Side effects:
+        Handles the entire application workflow, including server connection, user login, and subsequent actions.
+        Exits the application upon completion of user interactions or upon encountering errors.
+    """
+    
     # parse arguments
     if len(sys.argv) != 3:
         print("usage: python3 %s <host> <port>" % sys.argv[0]);
@@ -355,6 +461,8 @@ def main():
                 
                 if action == "Login":
                     username = frontend_dashboard.username_login()
+                    if username is None:
+                        continue
                     
                     login_info = {'username': username, 'password': None, 'action': "Login"}
                     server_socket.sendall(json.dumps(login_info).encode())
@@ -370,6 +478,9 @@ def main():
                     
                     elif response == "Verified":
                         password = frontend_dashboard.password_login()
+                        if password is None:
+                            continue
+                        
                         login_info = {'username': username, 'password': password, 'action': "Login"}
                         server_socket.sendall(json.dumps(login_info).encode())
                         break
@@ -378,8 +489,11 @@ def main():
                         frontend_dashboard.display_message("You have not verified your account.")
                         if verify_pin_helper(server_socket):
                             continue # pin is verified and they can log in properly
+                        elif verify_pin_helper(server_socket) == "cancel":
+                            frontend_dashboard.display_message("Returning back the main menu...")
+                            continue
                         else:
-                            print("Invalid PIN entered. Please try again.")
+                            frontend_dashboard.display_message("Invalid PIN entered. Please try again.")
                             continue
                     elif response == "User does not exist":
                         frontend_dashboard.display_message("This user does not exist")
@@ -390,21 +504,16 @@ def main():
                     
 
                 elif action == "Create User": 
-                    username, password = frontend_dashboard.create_user()
+                    username = frontend_dashboard.create_user_getusername()
                     
                     if username is None:
                         continue
-                    
-                    print(username, password)
-                    
+                                        
                     # STEP 1 - send username
-                    auth_info = {'username': username, 'password': password, 'action': "Create User"}
-                    print(auth_info)
+                    auth_info = {'username': username, 'password': None, 'action': "Create User"}
                     server_socket.sendall(json.dumps(auth_info).encode())
-                    print("login info sent")
                     
                     response = server_socket.recv(1024).decode()
-                    print(response)
 
                     if response == "Username taken":
                         #display username taken on gui
@@ -415,35 +524,29 @@ def main():
                         continue
                     
                     elif response == "Valid username":
-                        # verify 
-                        while True: # repeat until valid pw is entered
-                            if frontend_dashboard.valid_pw(password):
-                                # STEP 3 - IF PW VALID, SEND USERNAME, PW for username to be verified by server
-                                server_socket.sendall("Valid password".encode())
-                                response = server_socket.recv(1024).decode()
-                                print(response)
-                                
-                                if response == "Get PIN": 
-                                    pin_to_verify = frontend_dashboard.get_pin()
-                                    server_socket.sendall(pin_to_verify.encode())
-                                    response = server_socket.recv(1024).decode()
-                                    print(response)
+                        password = frontend_dashboard.create_user_getpassword()
+                        if password is None:
+                            continue
+                        
+                        else:
+                            server_socket.sendall("Valid password".encode())
+                            response = server_socket.recv(1024).decode()
+                            
+                            if response == "Get PIN": 
+                                pin_to_verify = frontend_dashboard.get_pin()
+                                server_socket.sendall(pin_to_verify.encode()) # sends pin to server
+                                response = server_socket.recv(1024).decode() # gets it back
 
-                                    if response == "Invalid PIN":
-                                        frontend_dashboard.display_message("Invalid PIN. Try Again.")
-                                        continue
+                                if response == "Invalid PIN":
+                                    frontend_dashboard.display_message("Invalid PIN. Try Again.")
+                                    continue
 
-                                    if response == "Time up":
-                                        frontend_dashboard.display_message("You took too long to input the PIN. Returning to menu...")
-                                        continue
-
-                                    else: # valid PIN, email verified
-                                    # email verification goes here -- stuff to do once email verified by server
-                                        make_account = {'username': username, 'password': password, 'verified': True}
-                                        server_socket.sendall(json.dumps(make_account).encode())
-                                        
-                                        frontend_dashboard.display_message("User created successfully")
-                                        break
+                                else: # valid PIN, email verified
+                                    make_account = {'username': username, 'password': password, 'verified': True}
+                                    server_socket.sendall(json.dumps(make_account).encode())
+                                    
+                                    frontend_dashboard.display_message("User created successfully")
+                                    continue
 
 
                 elif action == "Forgot password":
@@ -511,6 +614,7 @@ def main():
                     # Close the current connection and loop to retry login
                     server_socket.sendall("CONTINUE".encode())
                     server_socket.close()
+                    
             elif response == "User does not exist":
                 frontend_dashboard.display_message("This user does not exist.")
             
@@ -522,7 +626,6 @@ def main():
     if role == "0":
         while True:
             action = frontend_dashboard.superadmin_menu(username)
-            print(action)
             
             if action == "Create Admin":
                 create_username = easygui.enterbox("Enter username:", "Create Admin")

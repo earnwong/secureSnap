@@ -124,19 +124,16 @@ class Dashboard:
 
         # Use select to check for read readiness
         readable, writable, exceptional = select.select(sockets_to_read, sockets_to_write, sockets_with_errors, timeout)
-        print(server_socket)
-        print(readable)
+
         if not readable:
             return False
         else:
-            print("there is a file to be received")
             with open(f'client/output/{username}_output.jpg', 'wb') as file:
                 while True:       
                     data = server_socket.recv(1024)  # Receive data in chunks
                     if data.endswith(b"END_OF_FILE"):
                     # Remove the END_OF_FILE bytes before saving
                         file.write(data[:-len(b"END_OF_FILE")])
-                        #print("Photo received successfully.")
                         break
                     file.write(data)
 
