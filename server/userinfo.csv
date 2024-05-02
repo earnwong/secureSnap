@@ -1,0 +1,3 @@
+username,userID,role,password,salt,verified
+superadmin,0,0,a5fd9b9eb09c984ad9559b673798e8a53667de85a280e28c1668ef2815a24b2f,6d0870a1f53d12ec34fb72567760a03e,True
+earnw783@gmail.com,51,1,0c2e3c4f1b157dee1ac4f3c038f26c4f1f4009267e841d1be17c21810cb63a99,ffe7b5e8534a8d5dd2553d60572639ba,True
